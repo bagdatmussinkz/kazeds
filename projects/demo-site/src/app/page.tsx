@@ -168,7 +168,7 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
               KazEDS Extension заменяет NCALayer — подписание происходит на вашем телефоне
             </p>
             <a
-              href="https://extension-sign.aitu.uz/eds_v2.0.0.zip"
+              href="https://extension-sign.aitu.uz/eds_v3.0.0.zip"
               download
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1F4E79] text-white rounded-xl font-medium
                 hover:bg-[#163d5e] transition-all duration-150 shadow-md shadow-blue-900/20 hover:shadow-lg mb-3"
@@ -176,7 +176,7 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Скачать Extension v2.0.0
+              Скачать Extension v3.0.0
             </a>
             <div className="mt-2 text-left bg-white/60 rounded-lg p-3 text-xs text-slate-500 space-y-1">
               <p className="font-medium text-slate-600">Установка:</p>

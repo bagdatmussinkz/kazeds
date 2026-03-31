@@ -12,6 +12,7 @@ export type SignMethod = "ECDSA" | "GOST";
 export interface SignResult {
   certificate: string; // base64 DER certificate or SPKI public key
   signature: string; // base64 signature
+  cmsSignature?: string; // CAdES-T CMS signature if available
   algorithm: string; // "SHA256withECDSA" | "GOST34.10-2015"
   method: SignMethod;
   subjectCn?: string;
@@ -59,17 +60,70 @@ export async function signWithGOST(
   // Get certificate info
   const keyInfo = await getKeyInfo(p12Base64, password);
 
+  // Try CMS with timestamp for legally binding signature
+  let cmsSignature: string | undefined;
+  try {
+    cmsSignature = await signCMSWithTimestamp(p12Base64, password, dataBase64, true);
+  } catch {
+    // Fallback to raw if CMS fails
+  }
+
   // Sign with raw signature
   const { certificate, signature } = await signRaw(p12Base64, password, dataBase64);
 
   return {
     certificate,
     signature,
+    cmsSignature, // CAdES-T if available
     algorithm: keyInfo.keyType.includes("512") ? "GOST34.10-2015/512" : "GOST34.10-2015/256",
     method: "GOST",
     subjectCn: keyInfo.subjectCn,
     keyType: keyInfo.keyType,
   };
+}
+
+const TSA_URL = "http://tsp.pki.gov.kz/tsp/";
+
+/**
+ * Sign CMS with CAdES-T timestamp (legally binding in KZ)
+ */
+export async function signCMSWithTimestamp(
+  p12Base64: string,
+  password: string,
+  dataBase64: string,
+  detached = false,
+): Promise<string> {
+  const wasm = await import("./wasm-bridge");
+
+  // Step 1: CMS signature (CAdES-BES)
+  let cms = await wasm.signCMS(p12Base64, password, dataBase64, detached);
+
+  // Step 2: Build TSA request
+  try {
+    const tsaReqB64 = await wasm.buildTSARequest(cms);
+    const tsaReqBytes = Uint8Array.from(atob(tsaReqB64), c => c.charCodeAt(0));
+
+    // Step 3: Send to TSA
+    const resp = await fetch(TSA_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/timestamp-query" },
+      body: tsaReqBytes,
+    });
+
+    if (resp.ok) {
+      const tsaRespBuf = await resp.arrayBuffer();
+      const tsaRespB64 = bufferToBase64(tsaRespBuf);
+      // Step 4: Apply timestamp token
+      cms = await wasm.applyTSAResponse(cms, tsaRespB64);
+      console.log("[KazEDS] CAdES-T timestamp applied");
+    } else {
+      console.warn("[KazEDS] TSA failed, returning CAdES-BES:", resp.status);
+    }
+  } catch (err) {
+    console.warn("[KazEDS] TSA timestamp failed, returning CAdES-BES:", err);
+  }
+
+  return cms;
 }
 
 /**

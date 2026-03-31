@@ -24,6 +24,14 @@
 
   console.log("[KazEDS Widget] Loaded, relay:", RELAY_URL);
 
+  function wrapPEM(base64, label) {
+    const lines = [];
+    for (let i = 0; i < base64.length; i += 76) {
+      lines.push(base64.slice(i, i + 76));
+    }
+    return "-----BEGIN " + label + "-----\n" + lines.join("\n") + "\n-----END " + label + "-----";
+  }
+
   // Signal presence
   window.__KAZEDS_INSTALLED__ = true;
   window.dispatchEvent(new CustomEvent("kazeds:installed"));
@@ -134,6 +142,53 @@
       if (method === "getVersion") {
         return { result: { version: "KazEDS/Widget" } };
       }
+    }
+
+    // commonUtils module (legacy NCALayer API — most KZ sites use this)
+    if (module === "kz.gov.pki.knca.commonUtils") {
+      const params = args || [];
+
+      if (method === "getActiveTokens") return { result: ["PKCS12"] };
+      if (method === "changeLocale") return { result: null };
+
+      if (method === "getKeyInfo") {
+        if (cachedCertificate) return { result: cachedCertificate };
+        const r = await handleSignRequest(origin, "auth");
+        if (r.error) return r;
+        cachedCertificate = r.result;
+        return { result: r.result.certificate };
+      }
+
+      if (method === "createCAdESFromBase64" || method === "createCMSSignatureFromBase64" || method === "createCAdESFromBase64Hash") {
+        // params: [storageType, keyType, dataBase64, attached?]
+        const data = params[2];
+        const r = await handleSignRequest(origin, "sign", data);
+        if (r.error) return r;
+        return { result: wrapPEM(r.result.signature, "CMS") };
+      }
+
+      if (method === "signXml") {
+        // params: [storageType, keyType, xmlString, tbsXPath, sigParentXPath]
+        const xml = params[2];
+        const r = await handleSignRequest(origin, "sign", btoa(xml));
+        if (r.error) return r;
+        return { result: r.result.signature };
+      }
+
+      if (method === "signXmls") {
+        // params: [storageType, keyType, xmlArray, tbsXPath, sigParentXPath]
+        const xmls = params[2];
+        if (!Array.isArray(xmls)) return { error: { code: -32602, message: "xmls must be an array" } };
+        const results = [];
+        for (const xml of xmls) {
+          const r = await handleSignRequest(origin, "sign", btoa(xml));
+          if (r.error) return r;
+          results.push(r.result.signature);
+        }
+        return { result: results };
+      }
+
+      return { error: { code: -32601, message: "Method not found: " + method } };
     }
 
     // Legacy NCALayer methods

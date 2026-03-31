@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           t.onload = function() { document.documentElement.classList.add('ready'); };
           document.head.appendChild(t);
         `}} />
-        <script src="http://extension.sign.aitu.uz/eds.js" />
+        <script src="https://extension-sign.aitu.uz/eds.js" />
       </head>
       <body className="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen antialiased">
         {children}

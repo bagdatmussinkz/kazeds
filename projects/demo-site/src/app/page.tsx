@@ -168,7 +168,7 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
               KazEDS Extension заменяет NCALayer — подписание происходит на вашем телефоне
             </p>
             <a
-              href="http://extension.sign.aitu.uz/eds.js"
+              href="https://extension-sign.aitu.uz/eds.js"
               className="text-[#1F4E79] text-sm font-medium underline"
             >
               Подробнее на sign.aitu.uz

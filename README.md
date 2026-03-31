@@ -24,10 +24,10 @@ Cloud Relay (Fastify API)
 
 | Сервис | Домен | Порт | Описание |
 |--------|-------|------|----------|
-| **Demo Site** | `demo.sign.aitu.uz` | 3000 | Тестовый сайт с кнопкой "Войти по ЭЦП" |
-| **Web App** | `app.sign.aitu.uz` | 5173 | PWA — сканер QR, ключи, подписание |
-| **Cloud Relay** | `relay.sign.aitu.uz` | 3001 | REST API — сессии, поллинг, результаты |
-| **Widget CDN** | `extension.sign.aitu.uz` | 80 (nginx) | JS-виджет — одна строка заменяет Extension |
+| **Demo Site** | `demo-sign.aitu.uz` | 3000 | Тестовый сайт с кнопкой "Войти по ЭЦП" |
+| **Web App** | `app-sign.aitu.uz` | 5173 | PWA — сканер QR, ключи, подписание |
+| **Cloud Relay** | `relay-sign.aitu.uz` | 3001 | REST API — сессии, поллинг, результаты |
+| **Widget CDN** | `extension-sign.aitu.uz` | 80 (nginx) | JS-виджет — одна строка заменяет Extension |
 | **Landing** | `sign.aitu.uz` | 80 (nginx) | Лендинг с инструкциями и WiFi QR |
 | **Nginx** | — | 80 | Reverse proxy для всех доменов |
 
@@ -41,7 +41,7 @@ Cloud Relay (Fastify API)
 ### 2. Прописать домены в `/etc/hosts`
 
 ```bash
-echo '127.0.0.1 sign.aitu.uz demo.sign.aitu.uz app.sign.aitu.uz relay.sign.aitu.uz extension.sign.aitu.uz' | sudo tee -a /etc/hosts
+echo '127.0.0.1 sign.aitu.uz demo-sign.aitu.uz app-sign.aitu.uz relay-sign.aitu.uz extension-sign.aitu.uz' | sudo tee -a /etc/hosts
 ```
 
 ### 3. Установить зависимости и собрать
@@ -80,16 +80,16 @@ docker run -d --name kazeds-nginx --rm \
 
 ```bash
 # Все сервисы
-curl -s http://demo.sign.aitu.uz/          # Demo Site
-curl -s http://app.sign.aitu.uz/           # Web App
-curl -s http://relay.sign.aitu.uz/health   # Relay health check
+curl -s http://demo-sign.aitu.uz/          # Demo Site
+curl -s http://app-sign.aitu.uz/           # Web App
+curl -s http://relay-sign.aitu.uz/health   # Relay health check
 curl -s http://sign.aitu.uz/               # Landing
-curl -s http://extension.sign.aitu.uz/eds.js | head -3            # Widget CDN
+curl -s http://extension-sign.aitu.uz/eds.js | head -3            # Widget CDN
 ```
 
 ### 6. Открыть в браузере
 
-Перейдите на **http://demo.sign.aitu.uz** и нажмите **"Войти по ЭЦП"**.
+Перейдите на **http://demo-sign.aitu.uz** и нажмите **"Войти по ЭЦП"**.
 
 Появится QR-оверлей с обратным отсчётом.
 
@@ -148,7 +148,7 @@ SIG=$(./scripts/sign.sh "demo" | python3 -c "import sys,json; print(json.load(sy
 Одна строка в `<head>`:
 
 ```html
-<script src="http://extension.sign.aitu.uz/eds.js"></script>
+<script src="http://extension-sign.aitu.uz/eds.js"></script>
 ```
 
 Виджет автоматически:
@@ -172,9 +172,9 @@ SIG=$(./scripts/sign.sh "demo" | python3 -c "import sys,json; print(json.load(sy
 ### Создание сессии
 
 ```bash
-curl -X POST http://relay.sign.aitu.uz/v1/sessions \
+curl -X POST http://relay-sign.aitu.uz/v1/sessions \
   -H "Content-Type: application/json" \
-  -d '{"origin":"http://demo.sign.aitu.uz","operation":"auth"}'
+  -d '{"origin":"http://demo-sign.aitu.uz","operation":"auth"}'
 ```
 
 Ответ:
@@ -186,9 +186,9 @@ curl -X POST http://relay.sign.aitu.uz/v1/sessions \
     "version": 1,
     "session_id": "uuid",
     "challenge": "base64",
-    "origin": "http://demo.sign.aitu.uz",
+    "origin": "http://demo-sign.aitu.uz",
     "operation": "auth",
-    "callback_url": "http://relay.sign.aitu.uz/v1/sessions/uuid/complete",
+    "callback_url": "http://relay-sign.aitu.uz/v1/sessions/uuid/complete",
     "expires_at": "2026-03-31T12:00:00.000Z"
   },
   "expires_at": "2026-03-31T12:00:00.000Z"

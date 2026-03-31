@@ -10,7 +10,7 @@
   ],
   "host_permissions": [
     "http://relay.kazeds.kz/*",
-    "http://relay.sign.aitu.uz/*",
+    "https://relay-sign.aitu.uz/*",
     "http://localhost:3001/*"
   ],
   "background": {

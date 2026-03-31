@@ -17,8 +17,8 @@
   if (window.__KAZEDS_LOADED__) return;
   window.__KAZEDS_LOADED__ = true;
 
-  const RELAY_URL = "http://relay.sign.aitu.uz/v1";
-  const APP_URL = "http://app.sign.aitu.uz";
+  const RELAY_URL = "https://relay-sign.aitu.uz/v1";
+  const APP_URL = "https://app-sign.aitu.uz";
   const POLLING_INTERVAL = 2000;
   const NCALAYER_PATTERN = /127\.0\.0\.1:13579/;
 

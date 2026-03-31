@@ -81,8 +81,61 @@ export default function Home() {
 function HomePage() {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [keyInfo, setKeyInfo] = useState<{ name: string; type: string; expires: string } | null>(null);
+  const [p12Stored, setP12Stored] = useState(false);
   const scannerRef = useRef<any>(null);
   const viewfinderRef = useRef<HTMLDivElement>(null);
+  const keyFileRef = useRef<HTMLInputElement>(null);
+
+  // Check if p12 is stored in sessionStorage
+  useEffect(() => {
+    const stored = sessionStorage.getItem("kazeds_p12");
+    const info = sessionStorage.getItem("kazeds_keyinfo");
+    if (stored && info) {
+      setP12Stored(true);
+      try { setKeyInfo(JSON.parse(info)); } catch {}
+    }
+  }, []);
+
+  const handleKeyUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const password = prompt("Введите пароль от ЭЦП:");
+    if (!password) return;
+
+    try {
+      const buf = await file.arrayBuffer();
+      const base64 = btoa(new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""));
+
+      // Try to get key info via WASM
+      let info = { name: file.name, type: "GOST", expires: "N/A" };
+      try {
+        const { getKeyInfo } = await import("@/lib/crypto/wasm-bridge");
+        const ki = await getKeyInfo(base64, password);
+        info = { name: ki.subjectCn || file.name, type: ki.keyType || "GOST", expires: ki.notAfter || "N/A" };
+      } catch (err) {
+        // WASM might not load on HTTP — store anyway
+        console.warn("[KazEDS] WASM not available, storing p12 without validation");
+      }
+
+      sessionStorage.setItem("kazeds_p12", base64);
+      sessionStorage.setItem("kazeds_p12_password", password);
+      sessionStorage.setItem("kazeds_keyinfo", JSON.stringify(info));
+      setKeyInfo(info);
+      setP12Stored(true);
+      setError(null);
+    } catch (err) {
+      setError("Ошибка загрузки: " + (err instanceof Error ? err.message : "неизвестная ошибка"));
+    }
+  };
+
+  const handleKeyRemove = () => {
+    sessionStorage.removeItem("kazeds_p12");
+    sessionStorage.removeItem("kazeds_p12_password");
+    sessionStorage.removeItem("kazeds_keyinfo");
+    setKeyInfo(null);
+    setP12Stored(false);
+  };
 
   const startScanner = useCallback(async () => {
     setError(null);
@@ -136,7 +189,7 @@ function HomePage() {
 
   const handleQRResult = (text: string) => {
     // Extract hash from deep link URL
-    // Expected: http://app-sign.aitu.uz/#/sign?session=...
+    // Expected: https://app-sign.aitu.uz/#/sign?session=...
     try {
       const hashIndex = text.indexOf("#/sign");
       if (hashIndex !== -1) {
@@ -204,21 +257,44 @@ function HomePage() {
           )}
 
           {/* My keys */}
-          <button className="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl
-            hover:bg-slate-50 active:scale-[0.98] transition-all duration-150">
-            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+          <input type="file" ref={keyFileRef} accept=".p12,.pfx" onChange={handleKeyUpload} className="hidden" />
+          {p12Stored && keyInfo ? (
+            <div className="p-4 bg-white border border-emerald-200 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="text-left flex-1 min-w-0">
+                  <span className="font-medium text-slate-700 block text-sm truncate">{keyInfo.name}</span>
+                  <span className="text-emerald-600 text-xs">{keyInfo.type}</span>
+                </div>
+                <button onClick={handleKeyRemove} className="text-slate-400 hover:text-red-500 transition p-1">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => keyFileRef.current?.click()}
+              className="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl
+                hover:bg-slate-50 active:scale-[0.98] transition-all duration-150">
+              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <span className="font-medium text-slate-700 block">Загрузить ЭЦП (.p12)</span>
+                <span className="text-slate-400 text-sm">Загрузите файл ключа для подписания</span>
+              </div>
+              <svg className="w-5 h-5 text-slate-300 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-            </div>
-            <div className="text-left">
-              <span className="font-medium text-slate-700 block">Мои ключи</span>
-              <span className="text-slate-400 text-sm">Нет сохранённых ключей</span>
-            </div>
-            <svg className="w-5 h-5 text-slate-300 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </button>
+            </button>
+          )}
 
           {/* History */}
           <button className="w-full flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl
@@ -248,11 +324,27 @@ function HomePage() {
 
 function SigningPage({ params }: { params: SignParams }) {
   const [state, setState] = useState<SigningState>({ status: "idle" });
-  const [method, setMethod] = useState<SignMethod>("ECDSA");
   const [p12File, setP12File] = useState<string | null>(null);
   const [p12Password, setP12Password] = useState("");
   const [p12FileName, setP12FileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-detect method: if p12 in sessionStorage → GOST, else ECDSA
+  const storedP12 = typeof window !== "undefined" ? sessionStorage.getItem("kazeds_p12") : null;
+  const storedPassword = typeof window !== "undefined" ? sessionStorage.getItem("kazeds_p12_password") : null;
+  const [method, setMethod] = useState<SignMethod>(storedP12 ? "GOST" : "ECDSA");
+
+  // Pre-fill from sessionStorage
+  useEffect(() => {
+    if (storedP12 && storedPassword) {
+      setP12File(storedP12);
+      setP12Password(storedPassword);
+      const info = sessionStorage.getItem("kazeds_keyinfo");
+      if (info) {
+        try { setP12FileName(JSON.parse(info).name); } catch {}
+      }
+    }
+  }, [storedP12, storedPassword]);
 
   const decodedData = params.data ? tryDecodeBase64Text(params.data) : null;
   const opLabel = params.op === "auth" ? "Аутентификация" : "Подписание";

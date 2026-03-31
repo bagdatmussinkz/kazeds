@@ -17,9 +17,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           tw.src = 'https://cdn.tailwindcss.com';
           tw.onload = function() { document.documentElement.style.opacity='1'; };
           document.head.appendChild(tw);
-          var eds = document.createElement('script');
-          eds.src = 'https://extension-sign.aitu.uz/eds.js';
-          document.head.appendChild(eds);
+          // eds.js widget — uncomment for development without extension
+          // var eds = document.createElement('script');
+          // eds.src = 'https://extension-sign.aitu.uz/eds.js';
+          // document.head.appendChild(eds);
         `}} />
       </head>
       <body className="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen antialiased">

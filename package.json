@@ -1,0 +1,25 @@
+{
+  "name": "kazeds",
+  "private": true,
+  "scripts": {
+    "dev:relay": "pnpm --filter @kazeds/relay dev",
+    "dev:web-app": "pnpm --filter @kazeds/web-app dev",
+    "dev:demo-site": "pnpm --filter @kazeds/demo-site dev",
+    "build": "pnpm -r build",
+    "build:shared": "pnpm --filter @kazeds/shared build",
+    "build:relay": "pnpm --filter @kazeds/relay build",
+    "build:web-app": "pnpm --filter @kazeds/web-app build",
+    "build:demo-site": "pnpm --filter @kazeds/demo-site build",
+    "lint": "pnpm -r lint",
+    "pack:extension": "cd projects/extension && VERSION=$(node -p \"require('./manifest.json').version\") && FNAME=kazeds-extension-v${VERSION}.zip && zip -r $FNAME . -x '*.DS_Store' -x 'src/__tests__/*' -x '*.zip' && cp $FNAME ../demo-site/public/kazeds-extension.zip && echo \"Packed: $FNAME\"",
+    "clean": "pnpm -r clean",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.2"
+  }
+}

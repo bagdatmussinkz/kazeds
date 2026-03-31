@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { generateKeyPair, signData } from "@/lib/crypto/key-manager";
 import { completeSession } from "@/lib/network/relay-client";
+import { signWithECDSA, signWithGOST, type SignMethod, type SignResult } from "@/lib/crypto/signer";
 
 // --- Types ---
 
@@ -136,7 +136,7 @@ function HomePage() {
 
   const handleQRResult = (text: string) => {
     // Extract hash from deep link URL
-    // Expected: http://app.sign.aitu.uz/#/sign?session=...
+    // Expected: http://app-sign.aitu.uz/#/sign?session=...
     try {
       const hashIndex = text.indexOf("#/sign");
       if (hashIndex !== -1) {
@@ -248,30 +248,55 @@ function HomePage() {
 
 function SigningPage({ params }: { params: SignParams }) {
   const [state, setState] = useState<SigningState>({ status: "idle" });
+  const [method, setMethod] = useState<SignMethod>("ECDSA");
+  const [p12File, setP12File] = useState<string | null>(null);
+  const [p12Password, setP12Password] = useState("");
+  const [p12FileName, setP12FileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const decodedData = params.data ? tryDecodeBase64Text(params.data) : null;
   const opLabel = params.op === "auth" ? "Аутентификация" : "Подписание";
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setP12FileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = btoa(
+        new Uint8Array(reader.result as ArrayBuffer).reduce((s, b) => s + String.fromCharCode(b), "")
+      );
+      setP12File(base64);
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   const handleSign = useCallback(async () => {
     setState({ status: "signing" });
     try {
-      const keyPair = await generateKeyPair("ECDSA");
-      const pubKeyDer = await crypto.subtle.exportKey("spki", keyPair.publicKey);
-      const pubKeyBase64 = bufferToBase64(pubKeyDer);
-      const challengeBuffer = base64ToBuffer(params.challenge);
-      const signatureBuffer = await signData(keyPair.privateKey, challengeBuffer, "ECDSA");
-      const signatureBase64 = bufferToBase64(signatureBuffer);
+      let result: SignResult;
+
+      if (method === "GOST") {
+        if (!p12File || !p12Password) {
+          setState({ status: "error", message: "Выберите .p12 файл и введите пароль" });
+          return;
+        }
+        result = await signWithGOST(p12File, p12Password, params.challenge);
+      } else {
+        result = await signWithECDSA(params.challenge);
+      }
 
       await completeSession(params.session, {
-        certificate: pubKeyBase64,
-        signature: signatureBase64,
-        algorithm: "SHA256withECDSA",
+        certificate: result.certificate,
+        signature: result.signature,
+        algorithm: result.algorithm as any,
       }, params.callback);
 
       setState({ status: "success" });
     } catch (err) {
       setState({ status: "error", message: err instanceof Error ? err.message : "Неизвестная ошибка" });
     }
-  }, [params]);
+  }, [params, method, p12File, p12Password]);
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-6">
@@ -319,9 +344,48 @@ function SigningPage({ params }: { params: SignParams }) {
 
           {state.status === "idle" && (
             <div className="space-y-3">
+              {/* Method selector */}
+              <div className="flex gap-2">
+                <button onClick={() => setMethod("ECDSA")}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+                    method === "ECDSA"
+                      ? "bg-[#1F4E79] text-white shadow-sm"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  }`}>
+                  ECDSA P-256
+                </button>
+                <button onClick={() => setMethod("GOST")}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+                    method === "GOST"
+                      ? "bg-[#1F4E79] text-white shadow-sm"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  }`}>
+                  ГОСТ (ЭЦП .p12)
+                </button>
+              </div>
+
+              {/* GOST: p12 file + password */}
+              {method === "GOST" && (
+                <div className="space-y-2 bg-slate-50 rounded-lg p-3">
+                  <input type="file" ref={fileInputRef} accept=".p12,.pfx" onChange={handleFileSelect} className="hidden" />
+                  <button onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-2.5 text-sm border border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-[#1F4E79] hover:text-[#1F4E79] transition">
+                    {p12FileName || "Выбрать .p12 файл"}
+                  </button>
+                  <input
+                    type="password"
+                    placeholder="Пароль от ЭЦП"
+                    value={p12Password}
+                    onChange={(e) => setP12Password(e.target.value)}
+                    className="w-full py-2.5 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20 focus:border-[#1F4E79]"
+                  />
+                </div>
+              )}
+
               <button onClick={handleSign}
-                className="w-full py-3.5 bg-[#1F4E79] text-white font-semibold rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20">
-                Подписать
+                disabled={method === "GOST" && (!p12File || !p12Password)}
+                className="w-full py-3.5 bg-[#1F4E79] text-white font-semibold rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20 disabled:opacity-30 disabled:cursor-not-allowed">
+                {method === "GOST" ? "Подписать (ГОСТ)" : "Подписать (ECDSA)"}
               </button>
               <button onClick={() => { window.location.hash = ""; }}
                 className="w-full py-3 text-slate-400 text-sm font-medium rounded-xl hover:bg-slate-50 transition">

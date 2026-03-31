@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,8 +10,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru">
       <head>
-        <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
-        <Script src="http://extension.eds.aitu.uz/eds.js" strategy="beforeInteractive" />
+        <style dangerouslySetInnerHTML={{ __html: `html:not(.ready) body { opacity: 0; }` }} />
+        <script dangerouslySetInnerHTML={{ __html: `
+          var t = document.createElement('script');
+          t.src = 'https://cdn.tailwindcss.com';
+          t.onload = function() { document.documentElement.classList.add('ready'); };
+          document.head.appendChild(t);
+        `}} />
+        <script src="http://extension.sign.aitu.uz/eds.js" />
       </head>
       <body className="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen antialiased">
         {children}

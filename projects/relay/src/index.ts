@@ -17,12 +17,7 @@ async function main() {
 
   // CORS
   await app.register(cors, {
-    origin: process.env.CORS_ORIGINS?.split(",") || [
-      "http://localhost:3000",
-      "http://demo.eds.aitu.uz",
-      "http://app.eds.aitu.uz",
-      "http://eds.aitu.uz",
-    ],
+    origin: true, // Allow all origins (dev mode)
   });
 
   // Rate limiting

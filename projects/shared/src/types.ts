@@ -49,6 +49,9 @@ export interface SigningResult {
   certificate: string; // base64 DER X.509
   signature: string; // base64
   algorithm: SigningAlgorithm;
+  subjectDN?: string;
+  notBefore?: string;
+  notAfter?: string;
 }
 
 export type SigningAlgorithm = "SHA256withRSA" | "SHA256withECDSA";
@@ -83,6 +86,9 @@ export interface CompleteSessionRequest {
   certificate: string; // base64 DER X.509
   signature: string; // base64
   algorithm: SigningAlgorithm;
+  subjectDN?: string;
+  notBefore?: string;
+  notAfter?: string;
 }
 
 export interface CompleteSessionResponse {

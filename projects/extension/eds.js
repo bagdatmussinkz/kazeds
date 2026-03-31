@@ -17,8 +17,8 @@
   if (window.__KAZEDS_LOADED__) return;
   window.__KAZEDS_LOADED__ = true;
 
-  const RELAY_URL = "http://relay.eds.aitu.uz/v1";
-  const APP_URL = "http://app.eds.aitu.uz";
+  const RELAY_URL = "http://relay.sign.aitu.uz/v1";
+  const APP_URL = "http://app.sign.aitu.uz";
   const POLLING_INTERVAL = 2000;
   const NCALAYER_PATTERN = /127\.0\.0\.1:13579/;
 
@@ -287,7 +287,7 @@
 
     const sessionId = session.session_id;
     const payload = session.qr_payload;
-    const deepLink = `${APP_URL}/#/sign?session=${sessionId}&op=${operation}&origin=${encodeURIComponent(payload.origin || window.location.origin)}&relay=${encodeURIComponent(payload.callback_url || "")}`;
+    const deepLink = `${APP_URL}/#/sign?session=${sessionId}&challenge=${encodeURIComponent(payload.challenge || "")}&origin=${encodeURIComponent(payload.origin || window.location.origin)}&callback=${encodeURIComponent(payload.callback_url || "")}&data=${encodeURIComponent(payload.data_b64 || "")}&op=${operation}`;
     const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(deepLink)}`;
 
     const expiresMs = new Date(session.expires_at).getTime() - Date.now();
@@ -315,14 +315,9 @@
         .kazeds-title { font-size: 18px; font-weight: 700; color: #1e293b; margin: 0 0 4px; }
         .kazeds-subtitle { font-size: 13px; color: #94a3b8; margin: 0 0 20px; }
         .kazeds-qr-wrap { position: relative; display: inline-block; margin-bottom: 20px; }
-        .kazeds-progress-ring {
-          position: absolute; inset: -12px;
-          width: calc(100% + 24px); height: calc(100% + 24px);
-          transform: rotate(-90deg);
-        }
-        .kazeds-progress-bg { fill: none; stroke: #e2e8f0; stroke-width: 4; }
-        .kazeds-progress-bar { fill: none; stroke: #1F4E79; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
         .kazeds-qr-img { border-radius: 12px; display: block; }
+        .kazeds-progress-track { width: 100%; height: 4px; background: #e2e8f0; border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
+        .kazeds-progress-fill { height: 100%; background: #1F4E79; border-radius: 2px; transition: width 1s linear; }
         .kazeds-timer { font-size: 13px; color: #64748b; margin: 0 0 16px; }
         .kazeds-timer strong { color: #1e293b; font-variant-numeric: tabular-nums; }
         .kazeds-status { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: #64748b; margin: 0 0 16px; }
@@ -341,13 +336,9 @@
         <p class="kazeds-title">Отсканируйте QR-код</p>
         <p class="kazeds-subtitle">Откройте KazEDS на телефоне и наведите камеру</p>
         <div class="kazeds-qr-wrap">
-          <svg class="kazeds-progress-ring" viewBox="0 0 224 224">
-            <circle class="kazeds-progress-bg" cx="112" cy="112" r="108" />
-            <circle class="kazeds-progress-bar" id="kazeds-ring" cx="112" cy="112" r="108"
-              stroke-dasharray="${2 * Math.PI * 108}" stroke-dashoffset="0" />
-          </svg>
           <img class="kazeds-qr-img" src="${qrImageUrl}" width="200" height="200" alt="QR" />
         </div>
+        <div class="kazeds-progress-track"><div class="kazeds-progress-fill" id="kazeds-bar" style="width:100%"></div></div>
         <div class="kazeds-timer">Осталось <strong id="kazeds-countdown">${Math.floor(totalMs / 1000)}</strong> сек</div>
         <div class="kazeds-status">
           <div class="kazeds-spinner"></div>
@@ -367,15 +358,15 @@
       if (e.target === overlay) { cancelSession(sessionId); hideQROverlay(); }
     });
 
-    const circumference = 2 * Math.PI * 108;
-    const ring = document.getElementById("kazeds-ring");
+    const bar = document.getElementById("kazeds-bar");
     const countdown = document.getElementById("kazeds-countdown");
     const startTime = Date.now();
 
     progressTimer = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(0, totalMs - elapsed);
-      if (ring) ring.setAttribute("stroke-dashoffset", String(circumference * (elapsed / totalMs)));
+      const pct = Math.max(0, (1 - elapsed / totalMs) * 100);
+      if (bar) bar.style.width = pct + "%";
       if (countdown) countdown.textContent = String(Math.ceil(remaining / 1000));
       if (remaining <= 0) { clearInterval(progressTimer); progressTimer = null; }
     }, 1000);

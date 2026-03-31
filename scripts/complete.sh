@@ -19,7 +19,7 @@ if [ -n "$1" ]; then
 else
   SESSION_ID=$(docker logs kazeds-relay --since 30s 2>&1 | grep -o '[0-9a-f]\{8\}-[0-9a-f]\{4\}-[0-9a-f]\{4\}-[0-9a-f]\{4\}-[0-9a-f]\{12\}' | tail -1)
   if [ -z "$SESSION_ID" ]; then
-    echo "Активная сессия не найдена. Нажмите 'Войти по ЭЦП' на demo.eds.aitu.uz"
+    echo "Активная сессия не найдена. Нажмите 'Войти по ЭЦП' на demo.sign.aitu.uz"
     exit 1
   fi
 fi

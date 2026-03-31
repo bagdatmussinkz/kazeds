@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +18,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru">
       <head>
-        <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
+        <style dangerouslySetInnerHTML={{ __html: `html:not(.ready) body { opacity: 0; }` }} />
+        <script dangerouslySetInnerHTML={{ __html: `
+          var t = document.createElement('script');
+          t.src = 'https://cdn.tailwindcss.com';
+          t.onload = function() { document.documentElement.classList.add('ready'); };
+          document.head.appendChild(t);
+        `}} />
       </head>
       <body className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen antialiased">
         {children}

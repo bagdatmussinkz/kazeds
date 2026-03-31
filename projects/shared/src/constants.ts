@@ -4,7 +4,7 @@
 
 // --- Cloud Relay ---
 export const RELAY_URL =
-  process.env.KAZEDS_RELAY_URL || "http://relay.kazeds.kz";
+  process.env.KAZEDS_RELAY_URL || "https://relay-sign.aitu.uz";
 export const RELAY_API_VERSION = "v1";
 export const RELAY_BASE_URL = `${RELAY_URL}/${RELAY_API_VERSION}`;
 

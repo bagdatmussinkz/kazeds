@@ -2,8 +2,10 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import { sessionRoutes } from "./routes/sessions";
+import { egovRoutes } from "./routes/egov";
 import { healthRoutes } from "./routes/health";
 import { SessionStore } from "./services/session-store";
+import { EgovStore } from "./services/egov-store";
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -29,11 +31,16 @@ async function main() {
   // In-memory session store
   const sessionStore = new SessionStore();
 
-  // Decorate fastify instance with session store
+  // In-memory eGov session store
+  const egovStore = new EgovStore();
+
+  // Decorate fastify instance with stores
   app.decorate("sessionStore", sessionStore);
+  app.decorate("egovStore", egovStore);
 
   // Routes
   await app.register(sessionRoutes, { prefix: "/v1" });
+  await app.register(egovRoutes, { prefix: "/v1" });
   await app.register(healthRoutes);
 
   // Start

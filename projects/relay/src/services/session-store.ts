@@ -58,8 +58,9 @@ export class SessionStore {
       expires_at: expiresAt.toISOString(),
     };
 
-    // Добавить data_hash для sign операций
+    // Добавить data для sign операций
     if (req.operation === "sign" && req.data) {
+      (qr_payload as any).data_b64 = req.data;
       const crypto = require("crypto");
       const dataBuffer = Buffer.from(req.data, "base64");
       qr_payload.data_hash = crypto

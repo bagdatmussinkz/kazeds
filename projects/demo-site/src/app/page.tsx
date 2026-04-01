@@ -353,64 +353,87 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
             </div>
 
             {/* Verify button */}
-            {!verify && result.certificate && (
+            {result.certificate && (
               <button onClick={handleVerify}
-                className="w-full py-3 bg-[#1F4E79] text-white font-semibold rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20">
-                Проверить подпись
+                disabled={verify?.status === "verifying"}
+                className="w-full py-3 bg-[#1F4E79] text-white font-semibold rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20 disabled:opacity-50">
+                {verify?.status === "verifying" ? (
+                  <span className="inline-flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Проверка...
+                  </span>
+                ) : "Проверить подпись"}
               </button>
             )}
 
-            {/* Verify progress */}
-            {verify?.status === "verifying" && (
-              <div className="flex items-center justify-center gap-2 py-4">
-                <div className="w-5 h-5 border-2 border-[#1F4E79] border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm text-slate-500">Проверка подписи...</span>
-              </div>
-            )}
+            {/* Verify modal */}
+            {(verify?.status === "valid" || verify?.status === "invalid") && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                onClick={() => setVerify(null)}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-md w-[90%] p-6 mx-4"
+                  onClick={(e) => e.stopPropagation()}>
 
-            {/* Verify result */}
-            {verify?.status === "valid" && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                  </svg>
-                  <span className="text-emerald-700 font-bold">Подпись верна</span>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-emerald-600/70">Данные</span>
-                    <span className="text-emerald-800 font-mono font-medium">"{result.data}"</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-emerald-600/70">Алгоритм</span>
-                    <span className="text-emerald-800 font-mono">{verify.keyInfo?.algorithm} {verify.keyInfo?.curve}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-emerald-600/70">Размер ключа</span>
-                    <span className="text-emerald-800 font-mono">{verify.keyInfo?.bits} бит</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-emerald-600/70">Время подписания</span>
-                    <span className="text-emerald-800">{result.timestamp}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-emerald-600/70">Статус</span>
-                    <span className="text-emerald-800 font-medium">Cryptographic verification passed</span>
-                  </div>
-                </div>
-              </div>
-            )}
+                  {verify.status === "valid" ? (
+                    <>
+                      {/* Valid header */}
+                      <div className="flex flex-col items-center mb-5">
+                        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-3">
+                          <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                          </svg>
+                        </div>
+                        <h2 className="text-xl font-bold text-emerald-700">Подпись верна</h2>
+                        <p className="text-slate-400 text-sm">Криптографическая проверка пройдена</p>
+                      </div>
 
-            {verify?.status === "invalid" && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                  </svg>
-                  <span className="text-red-600 font-bold">Подпись невалидна</span>
+                      {/* Details */}
+                      <div className="bg-slate-50 rounded-xl p-4 space-y-3 mb-5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Данные</span>
+                          <span className="text-sm text-slate-800 font-mono font-semibold">"{result.data}"</span>
+                        </div>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Алгоритм</span>
+                          <span className="text-sm text-slate-700 font-mono">{verify.keyInfo?.algorithm} {verify.keyInfo?.curve}</span>
+                        </div>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Ключ</span>
+                          <span className="text-sm text-slate-700 font-mono">{verify.keyInfo?.bits} бит</span>
+                        </div>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Время</span>
+                          <span className="text-sm text-slate-700">{result.timestamp}</span>
+                        </div>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Подпись</span>
+                          <span className="text-xs text-slate-500 font-mono">{result.signature?.slice(0, 24)}...</span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Invalid header */}
+                      <div className="flex flex-col items-center mb-5">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-3">
+                          <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                          </svg>
+                        </div>
+                        <h2 className="text-xl font-bold text-red-600">Подпись невалидна</h2>
+                        <p className="text-slate-400 text-sm text-center">Данные не соответствуют подписи или ключ не совпадает</p>
+                      </div>
+                    </>
+                  )}
+
+                  <button onClick={() => setVerify(null)}
+                    className="w-full py-3 bg-slate-100 text-slate-600 font-medium rounded-xl hover:bg-slate-200 transition">
+                    Закрыть
+                  </button>
                 </div>
-                <p className="text-red-500 text-sm">Данные не соответствуют подписи или ключ не совпадает.</p>
               </div>
             )}
 

@@ -373,9 +373,12 @@ function SigningPage({ params }: { params: SignParams }) {
           setState({ status: "error", message: "Выберите .p12 файл и введите пароль" });
           return;
         }
-        result = await signWithGOST(p12File, p12Password, params.challenge);
+        // Sign the actual data (not challenge) so it can be verified
+        const dataToSign = params.data || params.challenge;
+        result = await signWithGOST(p12File, p12Password, dataToSign);
       } else {
-        result = await signWithECDSA(params.challenge);
+        const dataToSign = params.data || params.challenge;
+        result = await signWithECDSA(dataToSign);
       }
 
       await completeSession(params.session, {

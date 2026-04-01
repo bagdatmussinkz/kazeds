@@ -8,6 +8,7 @@ type SigningResult = {
   success: boolean;
   signature?: string;
   certificate?: string;
+  cmsSignature?: string;
   data?: string;
   timestamp?: string;
   errorMessage?: string;
@@ -65,13 +66,16 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
         NCALayerClient.basicsSignerSignAny,
       );
 
-      // Get certificate from eds.js global
+      // Get certificate + CMS from eds.js global
       const cert = (window as any).__KAZEDS_LAST_CERT__ || "";
+      const lastResult = (window as any).__KAZEDS_LAST_RESULT__;
+      const cms = lastResult?.cmsSignature || "";
 
       onResult({
         success: true,
         signature,
         certificate: cert,
+        cmsSignature: cms,
         data: SIGN_DATA,
         timestamp: new Date().toLocaleString("ru-KZ", {
           day: "2-digit", month: "2-digit", year: "numeric",
@@ -211,6 +215,7 @@ type VerifyResult = {
   status: "idle" | "verifying" | "valid" | "invalid";
   keyInfo?: { algorithm: string; curve: string; bits: number };
   isGost?: boolean;
+  ezSignerResult?: any;
 } | null;
 
 function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: () => void }) {
@@ -256,12 +261,39 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
         );
       } catch {
         // Not ECDSA P-256 — likely GOST certificate
-        // Web Crypto cannot verify GOST, show as "accepted" with GOST info
-        setVerify({
-          status: "valid",
-          keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
-          isGost: true,
-        });
+        // Try ezsigner.kz if CMS signature available
+        if (result.cmsSignature) {
+          try {
+            const cmsB64 = result.cmsSignature;
+            const binary = Uint8Array.from(atob(cmsB64), c => c.charCodeAt(0));
+            const blob = new Blob([binary], { type: "application/pkcs7-signature" });
+            const form = new FormData();
+            form.append("signData", blob, "signature.cms");
+
+            const resp = await fetch("https://ezsigner.kz/checkSign", { method: "POST", body: form });
+            const ezResult = await resp.json();
+
+            setVerify({
+              status: ezResult?.valid || resp.ok ? "valid" : "invalid",
+              keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
+              isGost: true,
+              ezSignerResult: ezResult,
+            });
+          } catch (ezErr) {
+            console.warn("ezsigner.kz failed:", ezErr);
+            setVerify({
+              status: "valid",
+              keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
+              isGost: true,
+            });
+          }
+        } else {
+          setVerify({
+            status: "valid",
+            keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
+            isGost: true,
+          });
+        }
         return;
       }
 

@@ -19,7 +19,7 @@ type Route = { page: "home" } | { page: "sign"; params: SignParams };
 type SigningState =
   | { status: "idle" }
   | { status: "signing" }
-  | { status: "success"; signature: string; certificate: string }
+  | { status: "success"; signature: string; certificate: string; cmsSignature?: string }
   | { status: "error"; message: string };
 
 type VerifyState = "idle" | "verifying" | "valid" | "invalid";
@@ -413,9 +413,15 @@ function SigningPage({ params }: { params: SignParams }) {
         certificate: result.certificate,
         signature: result.signature,
         algorithm: result.algorithm as any,
-      }, params.callback);
+        cmsSignature: result.cmsSignature,
+      } as any, params.callback);
 
-      setState({ status: "success", signature: result.signature, certificate: result.certificate });
+      setState({
+        status: "success",
+        signature: result.signature,
+        certificate: result.certificate,
+        cmsSignature: result.cmsSignature,
+      });
     } catch (err) {
       setState({ status: "error", message: err instanceof Error ? err.message : "Неизвестная ошибка" });
     }

@@ -14,4 +14,5 @@ export const completeSessionSchema = z.object({
   subjectDN: z.string().optional(),
   notBefore: z.string().optional(),
   notAfter: z.string().optional(),
+  cmsSignature: z.string().optional(),
 });

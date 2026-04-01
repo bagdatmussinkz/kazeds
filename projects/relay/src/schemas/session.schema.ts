@@ -10,7 +10,7 @@ export const createSessionSchema = z.object({
 export const completeSessionSchema = z.object({
   certificate: z.string().min(1),
   signature: z.string().min(1),
-  algorithm: z.enum(["SHA256withRSA", "SHA256withECDSA"]),
+  algorithm: z.string().min(1),
   subjectDN: z.string().optional(),
   notBefore: z.string().optional(),
   notAfter: z.string().optional(),

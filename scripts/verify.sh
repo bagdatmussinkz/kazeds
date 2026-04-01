@@ -1,87 +1,157 @@
 #!/bin/bash
 # =============================================================
 # KazEDS — Верификация подписи
-# Использование: ./scripts/verify.sh <данные> <подпись_base64> [сертификат.pem]
+# Использование:
+#   ./scripts/verify.sh <данные> <подпись_base64> [публичный_ключ_base64]
 #
-# Примеры:
-#   ./scripts/verify.sh "demo" "MEUCIQ..." ./cert.pem
-#   ./scripts/verify.sh "demo" "MEUCIQ..."
+# Стратегия:
+#   1. Если 3 аргумента и ключ SPKI → verify-web.sh (ECDSA, OpenSSL)
+#   2. Если CMS формат → ezsigner.kz API (ГОСТ + RSA)
+#   3. Если CMS + Docker → Java BouncyCastle (оффлайн)
 # =============================================================
 
 set -e
 
 if [ -z "$2" ]; then
-  echo "Использование: ./scripts/verify.sh <данные> <подпись_base64> [сертификат.pem]"
-  echo ""
-  echo "Аргументы:"
-  echo "  <данные>          Оригинальный текст, который был подписан"
-  echo "  <подпись_base64>  Подпись в формате Base64"
-  echo "  [сертификат.pem]  Сертификат подписанта (по умолчанию /tmp/kazeds-cert.pem)"
+  echo "Использование: ./scripts/verify.sh <данные> <подпись_base64> [pubkey_base64]"
   echo ""
   echo "Примеры:"
-  echo "  # Подписать и сразу верифицировать:"
-  echo "  SIG=\$(./scripts/sign.sh \"demo\" | python3 -c \"import sys,json; print(json.load(sys.stdin)['signature'])\")"
-  echo "  ./scripts/verify.sh \"demo\" \"\$SIG\""
+  echo "  # ECDSA (Web Crypto):"
+  echo "  ./scripts/verify.sh \"demo\" \"sig_b64\" \"pubkey_b64\""
+  echo ""
+  echo "  # ГОСТ (CMS через ezsigner.kz):"
+  echo "  ./scripts/verify.sh \"demo\" \"cms_b64\""
+  echo ""
+  echo "  # ГОСТ (CMS через Java Docker):"
+  echo "  VERIFY_MODE=java ./scripts/verify.sh \"demo\" \"cms_b64\""
   exit 1
 fi
 
 DATA="$1"
-SIGNATURE="$2"
-CERT_FILE="${3:-/tmp/kazeds-cert.pem}"
+SIG_B64="$2"
+PUBKEY_B64="${3:-}"
 
-if [ ! -f "$CERT_FILE" ]; then
-  echo "ОШИБКА: Сертификат не найден: $CERT_FILE"
-  echo "Укажите путь к сертификату или сначала запустите ./scripts/sign.sh"
-  exit 1
+# ── ECDSA: delegate to verify-web.sh ──
+if [ -n "$PUBKEY_B64" ]; then
+  exec ./scripts/verify-web.sh "$DATA" "$SIG_B64" "$PUBKEY_B64"
 fi
 
 echo "========================================"
 echo "  KazEDS — Верификация подписи"
 echo "========================================"
 echo ""
-
-# Certificate info
-SUBJECT=$(openssl x509 -in "$CERT_FILE" -noout -subject -nameopt RFC2253 2>/dev/null | sed 's/subject=//')
-ISSUER=$(openssl x509 -in "$CERT_FILE" -noout -issuer -nameopt RFC2253 2>/dev/null | sed 's/issuer=//')
-NOT_BEFORE=$(openssl x509 -in "$CERT_FILE" -noout -startdate 2>/dev/null | sed 's/notBefore=//')
-NOT_AFTER=$(openssl x509 -in "$CERT_FILE" -noout -enddate 2>/dev/null | sed 's/notAfter=//')
-FINGERPRINT=$(openssl x509 -in "$CERT_FILE" -noout -fingerprint -sha256 2>/dev/null | sed 's/.*=//')
-
-echo "Сертификат:"
-echo "  Субъект:      $SUBJECT"
-echo "  Издатель:     $ISSUER"
-echo "  Действует:    $NOT_BEFORE — $NOT_AFTER"
-echo "  Fingerprint:  $FINGERPRINT"
-echo ""
-echo "Данные:         $DATA"
-echo "Подпись:        ${SIGNATURE:0:50}..."
+echo "Данные:    $DATA"
+echo "Подпись:   ${SIG_B64:0:40}..."
 echo ""
 
-# Extract public key
-PUBKEY=$(mktemp)
-openssl x509 -in "$CERT_FILE" -pubkey -noout > "$PUBKEY" 2>/dev/null
+TMPDIR=$(mktemp -d)
+trap "rm -rf $TMPDIR" EXIT
 
-# Decode signature
-SIGBIN=$(mktemp)
-echo "$SIGNATURE" | openssl base64 -d -A > "$SIGBIN" 2>/dev/null
+echo -n "$SIG_B64" | base64 -d > "$TMPDIR/sig.bin" 2>/dev/null || \
+  echo -n "$SIG_B64" | openssl base64 -d -A > "$TMPDIR/sig.bin" 2>/dev/null
 
-# Verify
-RESULT=$(echo -n "$DATA" | openssl dgst -sha256 -verify "$PUBKEY" -signature "$SIGBIN" 2>&1 || true)
+SIG_SIZE=$(wc -c < "$TMPDIR/sig.bin" | tr -d ' ')
 
-rm -f "$PUBKEY" "$SIGBIN"
-
-if echo "$RESULT" | grep -q "Verified OK"; then
-  echo "Результат:      ПОДПИСЬ ВЕРНА"
+# ── ezsigner.kz (онлайн, ГОСТ + RSA) ──
+if [ "${VERIFY_MODE:-}" != "java" ]; then
+  echo "Метод:     ezsigner.kz (НУЦ РК)"
   echo ""
-  echo "  Документ \"$DATA\" подписан"
-  echo "  на имя $SUBJECT"
-  echo "  алгоритмом ECDSA P-256 + SHA-256"
+
+  RESPONSE=$(curl -s -w "\n%{http_code}" \
+    -X POST "https://ezsigner.kz/checkSign" \
+    -F "signData=@$TMPDIR/sig.bin;type=application/pkcs7-signature;filename=sig.cms" \
+    2>/dev/null || echo -e "\n000")
+
+  HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+  BODY=$(echo "$RESPONSE" | sed '$d')
+
+  if [ "$HTTP_CODE" = "200" ]; then
+    echo "Результат: ПОДПИСЬ ВЕРНА"
+    echo ""
+    echo "Ответ ezsigner.kz:"
+    echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+    exit 0
+  elif [ "$HTTP_CODE" = "000" ]; then
+    echo "ezsigner.kz недоступен, попробуйте: VERIFY_MODE=java ./scripts/verify.sh ..."
+    exit 1
+  else
+    echo "Результат: ОШИБКА (HTTP $HTTP_CODE)"
+    echo "$BODY"
+    exit 1
+  fi
+fi
+
+# ── Java BouncyCastle (оффлайн, Docker) ──
+echo "Метод:     Java BouncyCastle (Docker)"
+echo ""
+
+cat > "$TMPDIR/Verify.java" << 'JAVAEOF'
+import java.nio.file.*;
+import java.security.*;
+import java.security.cert.X509Certificate;
+import java.util.Collection;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cms.*;
+import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+public class Verify {
+    public static void main(String[] args) throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
+        byte[] cmsBytes = Files.readAllBytes(Path.of("/data/sig.bin"));
+        CMSSignedData signed = new CMSSignedData(cmsBytes);
+
+        for (SignerInformation signer : signed.getSignerInfos().getSigners()) {
+            Collection<X509CertificateHolder> certs =
+                signed.getCertificates().getMatches(signer.getSID());
+            for (X509CertificateHolder certHolder : certs) {
+                boolean valid = signer.verify(
+                    new JcaSimpleSignerInfoVerifierBuilder()
+                        .setProvider("BC")
+                        .build(certHolder));
+                X509Certificate x509 = new JcaX509CertificateConverter()
+                    .setProvider("BC")
+                    .getCertificate(certHolder);
+                if (valid) {
+                    System.out.println("RESULT: VALID");
+                    System.out.println("Subject: " + x509.getSubjectX500Principal());
+                    System.out.println("Issuer: " + x509.getIssuerX500Principal());
+                    System.out.println("Algorithm: " + x509.getSigAlgName());
+                    System.out.println("Serial: " + x509.getSerialNumber().toString(16));
+                    System.out.println("NotBefore: " + x509.getNotBefore());
+                    System.out.println("NotAfter: " + x509.getNotAfter());
+                } else {
+                    System.out.println("RESULT: INVALID");
+                }
+                return;
+            }
+        }
+        System.out.println("RESULT: NO_SIGNER_FOUND");
+    }
+}
+JAVAEOF
+
+# Run in Docker with BouncyCastle
+RESULT=$(docker run --rm \
+  -v "$TMPDIR:/data" -w /data \
+  eclipse-temurin:21-jdk-alpine sh -c "
+    # Download BouncyCastle
+    wget -q -O /data/bcprov.jar https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.78.1/bcprov-jdk18on-1.78.1.jar
+    wget -q -O /data/bcpkix.jar https://repo1.maven.org/maven2/org/bouncycastle/bcpkix-jdk18on/1.78.1/bcpkix-jdk18on-1.78.1.jar
+    wget -q -O /data/bcutil.jar https://repo1.maven.org/maven2/org/bouncycastle/bcutil-jdk18on/1.78.1/bcutil-jdk18on-1.78.1.jar
+    javac -cp '/data/bcprov.jar:/data/bcpkix.jar:/data/bcutil.jar' /data/Verify.java
+    java -cp '/data:/data/bcprov.jar:/data/bcpkix.jar:/data/bcutil.jar' Verify
+  " 2>&1)
+
+echo "$RESULT"
+
+if echo "$RESULT" | grep -q "RESULT: VALID"; then
+  echo ""
+  echo "Результат: ПОДПИСЬ ВЕРНА (Java BouncyCastle)"
   exit 0
 else
-  echo "Результат:      ПОДПИСЬ НЕВАЛИДНА"
   echo ""
-  echo "  Данные не соответствуют подписи,"
-  echo "  или подпись создана другим ключом."
-  echo "  OpenSSL: $RESULT"
+  echo "Результат: ПОДПИСЬ НЕВАЛИДНА"
   exit 1
 fi

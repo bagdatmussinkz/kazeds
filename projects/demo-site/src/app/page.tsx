@@ -270,7 +270,7 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
             const form = new FormData();
             form.append("signData", blob, "signature.cms");
 
-            const resp = await fetch("https://ezsigner.kz/checkSign", { method: "POST", body: form });
+            const resp = await fetch("https://verify-sign.aitu.uz/checkSign", { method: "POST", body: form });
             const ezResult = await resp.json();
 
             setVerify({

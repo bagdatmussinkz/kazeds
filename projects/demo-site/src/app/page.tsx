@@ -7,6 +7,7 @@ type ConnectionStatus = "checking" | "connected" | "disconnected";
 type SigningResult = {
   success: boolean;
   signature?: string;
+  certificate?: string;
   data?: string;
   timestamp?: string;
   errorMessage?: string;
@@ -64,9 +65,13 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
         NCALayerClient.basicsSignerSignAny,
       );
 
+      // Get certificate from eds.js global
+      const cert = (window as any).__KAZEDS_LAST_CERT__ || "";
+
       onResult({
         success: true,
         signature,
+        certificate: cert,
         data: SIGN_DATA,
         timestamp: new Date().toLocaleString("ru-KZ", {
           day: "2-digit", month: "2-digit", year: "numeric",
@@ -214,12 +219,14 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
     }
   };
 
+  const verifyCmd = result.certificate
+    ? `./scripts/verify-web.sh "${SIGN_DATA}" "${result.signature}" "${result.certificate}"`
+    : `./scripts/verify.sh "${SIGN_DATA}" "${result.signature}"`;
+
   const copyVerifyCommand = () => {
-    if (result.signature) {
-      navigator.clipboard.writeText(`./scripts/verify.sh "${SIGN_DATA}" "${result.signature}"`);
-      setCopiedCmd(true);
-      setTimeout(() => setCopiedCmd(false), 2000);
-    }
+    navigator.clipboard.writeText(verifyCmd);
+    setCopiedCmd(true);
+    setTimeout(() => setCopiedCmd(false), 2000);
   };
 
   return (
@@ -303,7 +310,9 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
                 </button>
               </div>
               <pre className="text-xs font-mono text-emerald-400 break-all whitespace-pre-wrap leading-relaxed">
-{`./scripts/verify.sh "${SIGN_DATA}" "${result.signature ? result.signature.slice(0, 20) + "..." : ""}"`}
+{result.certificate
+  ? `./scripts/verify-web.sh "${SIGN_DATA}" "${result.signature ? result.signature.slice(0, 16) + "..." : ""}" "${result.certificate.slice(0, 16)}..."`
+  : `./scripts/verify.sh "${SIGN_DATA}" "${result.signature ? result.signature.slice(0, 20) + "..." : ""}"`}
               </pre>
             </div>
           </div>

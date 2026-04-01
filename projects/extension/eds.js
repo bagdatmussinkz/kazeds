@@ -92,6 +92,9 @@
         if (status.status === "completed" && status.result) {
           console.log("[KazEDS Widget] Completed!");
           hideQROverlay();
+          // Save certificate for verification
+          window.__KAZEDS_LAST_CERT__ = status.result.certificate || null;
+          window.__KAZEDS_LAST_RESULT__ = status.result;
           return { result: status.result };
         }
         if (status.status === "rejected") {

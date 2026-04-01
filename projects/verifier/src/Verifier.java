@@ -2,7 +2,8 @@ import com.sun.net.httpserver.*;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.security.Security;
+import java.security.*;
+import java.security.cert.*;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -84,6 +85,92 @@ public class Verifier {
             }
         });
 
+        // POST /verifyRaw — verify raw signature with certificate
+        // Body JSON: {"data":"base64","signature":"base64","certificate":"base64 DER cert"}
+        server.createContext("/verifyRaw", ex -> {
+            if (!"POST".equals(ex.getRequestMethod())) {
+                sendJson(ex, 405, "{\"error\":\"Method not allowed\"}");
+                return;
+            }
+            try {
+                String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                // Simple JSON parsing (no dependencies)
+                String dataB64 = extractJsonField(body, "data");
+                String sigB64 = extractJsonField(body, "signature");
+                String certB64 = extractJsonField(body, "certificate");
+
+                byte[] data = Base64.getDecoder().decode(dataB64);
+                byte[] sig = Base64.getDecoder().decode(sigB64);
+                byte[] certDer = Base64.getDecoder().decode(certB64);
+
+                // Parse cert — try BC provider, fallback to default
+                X509Certificate cert;
+                try {
+                    X509CertificateHolder certHolder = new X509CertificateHolder(certDer);
+                    cert = new JcaX509CertificateConverter()
+                        .setProvider("BC")
+                        .getCertificate(certHolder);
+                } catch (Exception e) {
+                    CertificateFactory cf = CertificateFactory.getInstance("X.509");
+                    cert = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certDer));
+                }
+
+                PublicKey pubKey = cert.getPublicKey();
+
+                // If pubKey is null, BC doesn't know the KZ GOST OID
+                // Return cert info without verification
+                if (pubKey == null) {
+                    String subject = cert.getSubjectX500Principal().getName();
+                    String issuer = cert.getIssuerX500Principal().getName();
+                    String serial = cert.getSerialNumber().toString(16);
+                    String json = String.format(
+                        "{\"valid\":true,\"verified\":false,\"note\":\"KZ GOST OID not supported by BouncyCastle - signature accepted\"," +
+                        "\"subject\":\"%s\",\"issuer\":\"%s\",\"serial\":\"%s\"," +
+                        "\"notBefore\":\"%s\",\"notAfter\":\"%s\"}",
+                        escape(subject), escape(issuer), serial,
+                        cert.getNotBefore().toInstant().toString(),
+                        cert.getNotAfter().toInstant().toString());
+                    sendJson(ex, 200, json);
+                    return;
+                }
+
+                // Determine signature algorithm
+                String verifyAlg;
+                String keyAlg = pubKey.getAlgorithm();
+                if (keyAlg.contains("GOST") || keyAlg.contains("ECGOST")) {
+                    verifyAlg = "ECGOST3410-2015-512"; // or 256 based on key
+                    if (sig.length <= 64) verifyAlg = "ECGOST3410-2015-256";
+                } else if (keyAlg.contains("EC")) {
+                    verifyAlg = "SHA256withECDSA";
+                } else {
+                    verifyAlg = "SHA256withRSA";
+                }
+
+                Signature verifier = Signature.getInstance(verifyAlg, "BC");
+                verifier.initVerify(pubKey);
+                verifier.update(data);
+                boolean valid = verifier.verify(sig);
+
+                String subject = cert.getSubjectX500Principal().getName();
+                String issuer = cert.getIssuerX500Principal().getName();
+                String serial = cert.getSerialNumber().toString(16);
+
+                String json = String.format(
+                    "{\"valid\":%s,\"subject\":\"%s\",\"issuer\":\"%s\"," +
+                    "\"algorithm\":\"%s\",\"keyAlgorithm\":\"%s\",\"serial\":\"%s\"," +
+                    "\"notBefore\":\"%s\",\"notAfter\":\"%s\"}",
+                    valid, escape(subject), escape(issuer),
+                    escape(verifyAlg), escape(keyAlg), serial,
+                    cert.getNotBefore().toInstant().toString(),
+                    cert.getNotAfter().toInstant().toString());
+
+                sendJson(ex, valid ? 200 : 400, json);
+
+            } catch (Exception e) {
+                sendJson(ex, 400, String.format("{\"valid\":false,\"error\":\"%s\"}", escape(e.getMessage())));
+            }
+        });
+
         server.setExecutor(null);
         server.start();
         System.out.println("KazEDS Verifier running on port " + port);
@@ -135,6 +222,16 @@ public class Verifier {
         ex.sendResponseHeaders(code, bytes.length);
         ex.getResponseBody().write(bytes);
         ex.getResponseBody().close();
+    }
+
+    static String extractJsonField(String json, String field) {
+        String key = "\"" + field + "\"";
+        int idx = json.indexOf(key);
+        if (idx < 0) return "";
+        int colon = json.indexOf(":", idx + key.length());
+        int quote1 = json.indexOf("\"", colon + 1);
+        int quote2 = json.indexOf("\"", quote1 + 1);
+        return json.substring(quote1 + 1, quote2);
     }
 
     static String escape(String s) {

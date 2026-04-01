@@ -207,9 +207,15 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
 
 // ==================== Dashboard Page ====================
 
+type VerifyResult = {
+  status: "idle" | "verifying" | "valid" | "invalid";
+  keyInfo?: { algorithm: string; curve: string; bits: number };
+} | null;
+
 function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: () => void }) {
   const [copiedSig, setCopiedSig] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState(false);
+  const [verify, setVerify] = useState<VerifyResult>(null);
 
   const copySignature = () => {
     if (result.signature) {
@@ -227,6 +233,52 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
     navigator.clipboard.writeText(verifyCmd);
     setCopiedCmd(true);
     setTimeout(() => setCopiedCmd(false), 2000);
+  };
+
+  const handleVerify = async () => {
+    if (!result.signature || !result.certificate) return;
+    setVerify({ status: "verifying" });
+
+    try {
+      // 1. Import SPKI public key
+      const pubKeyDer = Uint8Array.from(atob(result.certificate), c => c.charCodeAt(0));
+      const pubKey = await crypto.subtle.importKey(
+        "spki",
+        pubKeyDer.buffer,
+        { name: "ECDSA", namedCurve: "P-256" },
+        true,
+        ["verify"],
+      );
+
+      // 2. Decode raw signature (r||s)
+      const sigBytes = Uint8Array.from(atob(result.signature), c => c.charCodeAt(0));
+
+      // 3. Encode data
+      const dataBytes = new TextEncoder().encode(SIGN_DATA);
+
+      // 4. Verify
+      const valid = await crypto.subtle.verify(
+        { name: "ECDSA", hash: "SHA-256" },
+        pubKey,
+        sigBytes,
+        dataBytes,
+      );
+
+      // 5. Get key info
+      const jwk = await crypto.subtle.exportKey("jwk", pubKey);
+
+      setVerify({
+        status: valid ? "valid" : "invalid",
+        keyInfo: {
+          algorithm: "ECDSA",
+          curve: jwk.crv || "P-256",
+          bits: 256,
+        },
+      });
+    } catch (err) {
+      console.error("Verify error:", err);
+      setVerify({ status: "invalid" });
+    }
   };
 
   return (
@@ -300,10 +352,72 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
               </div>
             </div>
 
-            {/* Verify command */}
+            {/* Verify button */}
+            {!verify && result.certificate && (
+              <button onClick={handleVerify}
+                className="w-full py-3 bg-[#1F4E79] text-white font-semibold rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20">
+                Проверить подпись
+              </button>
+            )}
+
+            {/* Verify progress */}
+            {verify?.status === "verifying" && (
+              <div className="flex items-center justify-center gap-2 py-4">
+                <div className="w-5 h-5 border-2 border-[#1F4E79] border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-slate-500">Проверка подписи...</span>
+              </div>
+            )}
+
+            {/* Verify result */}
+            {verify?.status === "valid" && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                  <span className="text-emerald-700 font-bold">Подпись верна</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-emerald-600/70">Данные</span>
+                    <span className="text-emerald-800 font-mono font-medium">"{result.data}"</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-emerald-600/70">Алгоритм</span>
+                    <span className="text-emerald-800 font-mono">{verify.keyInfo?.algorithm} {verify.keyInfo?.curve}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-emerald-600/70">Размер ключа</span>
+                    <span className="text-emerald-800 font-mono">{verify.keyInfo?.bits} бит</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-emerald-600/70">Время подписания</span>
+                    <span className="text-emerald-800">{result.timestamp}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-emerald-600/70">Статус</span>
+                    <span className="text-emerald-800 font-medium">Cryptographic verification passed</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {verify?.status === "invalid" && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  <span className="text-red-600 font-bold">Подпись невалидна</span>
+                </div>
+                <p className="text-red-500 text-sm">Данные не соответствуют подписи или ключ не совпадает.</p>
+              </div>
+            )}
+
+            {/* CLI verify command */}
             <div className="bg-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-medium">Команда проверки</p>
+                <p className="text-xs text-slate-400 uppercase tracking-wider font-medium">CLI проверка</p>
                 <button onClick={copyVerifyCommand}
                   className="flex-shrink-0 px-2.5 py-1 bg-slate-700 border border-slate-600 rounded-lg text-xs text-slate-300 hover:bg-slate-600 active:scale-95 transition-all">
                   {copiedCmd ? <span className="text-emerald-400 font-medium">Скопировано</span> : "Копировать"}
@@ -311,8 +425,8 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
               </div>
               <pre className="text-xs font-mono text-emerald-400 break-all whitespace-pre-wrap leading-relaxed">
 {result.certificate
-  ? `./scripts/verify-web.sh "${SIGN_DATA}" "${result.signature ? result.signature.slice(0, 16) + "..." : ""}" "${result.certificate.slice(0, 16)}..."`
-  : `./scripts/verify.sh "${SIGN_DATA}" "${result.signature ? result.signature.slice(0, 20) + "..." : ""}"`}
+  ? `./scripts/verify-web.sh "${SIGN_DATA}" "<sig>" "<key>"`
+  : `./scripts/verify.sh "${SIGN_DATA}" "<sig>"`}
               </pre>
             </div>
           </div>

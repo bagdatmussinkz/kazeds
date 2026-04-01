@@ -448,8 +448,8 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
               </div>
               <pre className="text-xs font-mono text-emerald-400 break-all whitespace-pre-wrap leading-relaxed">
 {result.certificate
-  ? `./scripts/verify-web.sh "${SIGN_DATA}" "<sig>" "<key>"`
-  : `./scripts/verify.sh "${SIGN_DATA}" "<sig>"`}
+  ? `./scripts/verify-web.sh "${SIGN_DATA}" "${result.signature?.slice(0,20)}..." "${result.certificate?.slice(0,20)}..."`
+  : `./scripts/verify.sh "${SIGN_DATA}" "${result.signature?.slice(0,20)}..."`}
               </pre>
             </div>
           </div>

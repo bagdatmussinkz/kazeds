@@ -16,7 +16,13 @@ interface SignParams {
 }
 
 type Route = { page: "home" } | { page: "sign"; params: SignParams };
-type SigningState = { status: "idle" } | { status: "signing" } | { status: "success" } | { status: "error"; message: string };
+type SigningState =
+  | { status: "idle" }
+  | { status: "signing" }
+  | { status: "success"; signature: string; certificate: string }
+  | { status: "error"; message: string };
+
+type VerifyState = "idle" | "verifying" | "valid" | "invalid";
 
 // --- Helpers ---
 
@@ -324,6 +330,28 @@ function HomePage() {
 
 function SigningPage({ params }: { params: SignParams }) {
   const [state, setState] = useState<SigningState>({ status: "idle" });
+  const [verifyState, setVerifyState] = useState<VerifyState>("idle");
+  const [verifyInfo, setVerifyInfo] = useState<{ algorithm: string; curve: string; bits: number } | null>(null);
+
+  const handleVerify = useCallback(async () => {
+    if (state.status !== "success") return;
+    setVerifyState("verifying");
+    try {
+      const pubKeyDer = Uint8Array.from(atob(state.certificate), c => c.charCodeAt(0));
+      const pubKey = await crypto.subtle.importKey("spki", pubKeyDer.buffer,
+        { name: "ECDSA", namedCurve: "P-256" }, true, ["verify"]);
+      const sigBytes = Uint8Array.from(atob(state.signature), c => c.charCodeAt(0));
+      const dataToVerify = params.data || params.challenge;
+      const dataBytes = base64ToBuffer(dataToVerify);
+      const valid = await crypto.subtle.verify(
+        { name: "ECDSA", hash: "SHA-256" }, pubKey, sigBytes, dataBytes);
+      const jwk = await crypto.subtle.exportKey("jwk", pubKey);
+      setVerifyInfo({ algorithm: "ECDSA", curve: jwk.crv || "P-256", bits: 256 });
+      setVerifyState(valid ? "valid" : "invalid");
+    } catch {
+      setVerifyState("invalid");
+    }
+  }, [state, params]);
   const [p12File, setP12File] = useState<string | null>(null);
   const [p12Password, setP12Password] = useState("");
   const [p12FileName, setP12FileName] = useState("");
@@ -387,7 +415,7 @@ function SigningPage({ params }: { params: SignParams }) {
         algorithm: result.algorithm as any,
       }, params.callback);
 
-      setState({ status: "success" });
+      setState({ status: "success", signature: result.signature, certificate: result.certificate });
     } catch (err) {
       setState({ status: "error", message: err instanceof Error ? err.message : "Неизвестная ошибка" });
     }
@@ -502,7 +530,70 @@ function SigningPage({ params }: { params: SignParams }) {
                 </svg>
               </div>
               <p className="text-emerald-700 font-semibold">Подписано успешно</p>
-              <p className="text-slate-400 text-sm">Можно закрыть страницу</p>
+              <button onClick={handleVerify}
+                disabled={verifyState === "verifying"}
+                className="px-6 py-2 bg-[#1F4E79] text-white text-sm font-medium rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
+                {verifyState === "verifying" ? "Проверка..." : "Проверить подпись"}
+              </button>
+              <p className="text-slate-400 text-xs">Можно закрыть страницу</p>
+            </div>
+          )}
+
+          {/* Verify modal */}
+          {(verifyState === "valid" || verifyState === "invalid") && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+              onClick={() => setVerifyState("idle")}>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-[90%] p-6"
+                onClick={(e) => e.stopPropagation()}>
+                {verifyState === "valid" ? (
+                  <>
+                    <div className="flex flex-col items-center mb-4">
+                      <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mb-2">
+                        <svg className="w-7 h-7 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                        </svg>
+                      </div>
+                      <h2 className="text-lg font-bold text-emerald-700">Подпись верна</h2>
+                      <p className="text-slate-400 text-xs">Криптографическая проверка пройдена</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-3 space-y-2 text-sm mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 text-xs">Данные</span>
+                        <span className="text-slate-800 font-mono text-xs font-semibold">"{decodedData || params.data}"</span>
+                      </div>
+                      <div className="border-t border-slate-200" />
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 text-xs">Алгоритм</span>
+                        <span className="text-slate-700 font-mono text-xs">{verifyInfo?.algorithm} {verifyInfo?.curve}</span>
+                      </div>
+                      <div className="border-t border-slate-200" />
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 text-xs">Ключ</span>
+                        <span className="text-slate-700 font-mono text-xs">{verifyInfo?.bits} бит</span>
+                      </div>
+                      <div className="border-t border-slate-200" />
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 text-xs">Время</span>
+                        <span className="text-slate-700 text-xs">{new Date().toLocaleString("ru-KZ")}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center mb-4">
+                    <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-2">
+                      <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                      </svg>
+                    </div>
+                    <h2 className="text-lg font-bold text-red-600">Подпись невалидна</h2>
+                    <p className="text-slate-400 text-xs text-center">Данные не соответствуют подписи</p>
+                  </div>
+                )}
+                <button onClick={() => setVerifyState("idle")}
+                  className="w-full py-2.5 bg-slate-100 text-slate-600 font-medium rounded-xl hover:bg-slate-200 transition text-sm">
+                  Закрыть
+                </button>
+              </div>
             </div>
           )}
           {state.status === "error" && (

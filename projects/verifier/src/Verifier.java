@@ -35,7 +35,13 @@ public class Verifier {
                 // Parse multipart or raw CMS
                 byte[] cmsBytes = extractCMS(body, ex.getRequestHeaders().getFirst("Content-Type"));
 
-                CMSSignedData signed = new CMSSignedData(cmsBytes);
+                CMSSignedData signed;
+                try {
+                    signed = new CMSSignedData(cmsBytes);
+                } catch (CMSException e) {
+                    // Detached signature — try with empty content
+                    signed = new CMSSignedData(new CMSProcessableByteArray(new byte[0]), cmsBytes);
+                }
                 var signers = signed.getSignerInfos().getSigners();
                 var certStore = signed.getCertificates();
 

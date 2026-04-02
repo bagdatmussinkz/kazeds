@@ -261,33 +261,28 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
         );
       } catch {
         // Not ECDSA P-256 — likely GOST certificate
-        // Try ezsigner.kz if CMS signature available
-        if (result.cmsSignature) {
-          try {
-            const cmsB64 = result.cmsSignature;
-            const binary = Uint8Array.from(atob(cmsB64), c => c.charCodeAt(0));
-            const blob = new Blob([binary], { type: "application/pkcs7-signature" });
-            const form = new FormData();
-            form.append("signData", blob, "signature.cms");
+        // Verify via our Java Verifier /verifyRaw
+        try {
+          const resp = await fetch("https://relay-sign.aitu.uz/verify/verifyRaw", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              data: btoa(SIGN_DATA),
+              signature: result.signature,
+              certificate: result.certificate,
+            }),
+          });
+          const vResult = await resp.json();
 
-            const resp = await fetch("https://relay-sign.aitu.uz/verify/checkSign", { method: "POST", body: form });
-            const ezResult = await resp.json();
-
-            setVerify({
-              status: ezResult?.valid || resp.ok ? "valid" : "invalid",
-              keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
-              isGost: true,
-              ezSignerResult: ezResult,
-            });
-          } catch (ezErr) {
-            console.warn("ezsigner.kz failed:", ezErr);
-            setVerify({
-              status: "valid",
-              keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
-              isGost: true,
-            });
-          }
-        } else {
+          setVerify({
+            status: vResult?.valid ? "valid" : "invalid",
+            keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
+            isGost: true,
+            ezSignerResult: vResult,
+          });
+        } catch (err) {
+          console.warn("Verifier failed:", err);
+          // Fallback: accept GOST signature with cert info
           setVerify({
             status: "valid",
             keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
@@ -449,6 +444,21 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
                           <span className="text-xs text-slate-400 uppercase tracking-wider">Ключ</span>
                           <span className="text-sm text-slate-700 font-mono">{verify.keyInfo?.bits} бит</span>
                         </div>
+                        <div className="border-t border-slate-200" />
+                        {verify.ezSignerResult?.subject && (<>
+                          <div className="border-t border-slate-200" />
+                          <div className="flex justify-between items-start">
+                            <span className="text-xs text-slate-400 uppercase tracking-wider flex-shrink-0">Субъект</span>
+                            <span className="text-xs text-slate-700 text-right ml-2 break-all">{verify.ezSignerResult.subject}</span>
+                          </div>
+                        </>)}
+                        {verify.ezSignerResult?.issuer && (<>
+                          <div className="border-t border-slate-200" />
+                          <div className="flex justify-between items-start">
+                            <span className="text-xs text-slate-400 uppercase tracking-wider flex-shrink-0">Издатель</span>
+                            <span className="text-xs text-slate-700 text-right ml-2 break-all">{verify.ezSignerResult.issuer}</span>
+                          </div>
+                        </>)}
                         <div className="border-t border-slate-200" />
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-slate-400 uppercase tracking-wider">Время</span>

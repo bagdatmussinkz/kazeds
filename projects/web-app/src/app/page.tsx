@@ -401,9 +401,16 @@ function SigningPage({ params }: { params: SignParams }) {
           setState({ status: "error", message: "Выберите .p12 файл и введите пароль" });
           return;
         }
-        // Sign the actual data (not challenge) so it can be verified
+        // Sign CMS (PKCS#7) — real sites expect CMS format, not raw
+        const { signCMSWithGOST, signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
         const dataToSign = params.data || params.challenge;
-        result = await signWithGOST(p12File, p12Password, dataToSign);
+        const cmsB64 = await signCMSWithGOST(p12File, p12Password, dataToSign, false); // attached CMS
+        const rawResult = await signRawGOST(p12File, p12Password, dataToSign);
+        result = {
+          ...rawResult,
+          signature: cmsB64, // CMS as main signature (sites expect this)
+          cmsSignature: cmsB64,
+        };
       } else {
         const dataToSign = params.data || params.challenge;
         result = await signWithECDSA(dataToSign);
@@ -411,9 +418,8 @@ function SigningPage({ params }: { params: SignParams }) {
 
       await completeSession(params.session, {
         certificate: result.certificate,
-        signature: result.signature,
+        signature: result.signature, // CMS for GOST, raw for ECDSA
         algorithm: result.algorithm as any,
-        cmsSignature: result.cmsSignature,
       } as any, params.callback);
 
       setState({

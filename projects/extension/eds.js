@@ -132,12 +132,15 @@
         const dataStr = typeof data === "string" ? data : undefined;
         const result = await handleSignRequest(origin, "sign", dataStr);
         if (result.error) return result;
-        return { result: result.result.signature };
+        const sig = result.result.signature;
+        // CMS signature (starts with MII) → wrap in PEM for real sites
+        return { result: sig.startsWith("MII") ? wrapPEM(sig, "CMS") : sig };
       }
       if (method === "authenticate") {
         const result = await handleSignRequest(origin, "auth");
         if (result.error) return result;
-        return { result: result.result.signature };
+        const sig = result.result.signature;
+        return { result: sig.startsWith("MII") ? wrapPEM(sig, "CMS") : sig };
       }
     }
 
@@ -207,12 +210,14 @@
       const data = args?.data || args?.dataToSign;
       const result = await handleSignRequest(origin, "sign", data);
       if (result.error) return result;
-      return { result: result.result.signature };
+      const sig = result.result.signature;
+      return { result: sig.startsWith("MII") ? wrapPEM(sig, "CMS") : sig };
     }
     if (method === "basicsAuthenticate") {
       const result = await handleSignRequest(origin, "auth");
       if (result.error) return result;
-      return { result: result.result.signature };
+      const sig = result.result.signature;
+      return { result: sig.startsWith("MII") ? wrapPEM(sig, "CMS") : sig };
     }
     if (method === "setLocale") return { result: true };
     if (method === "getSubjectDN") return cachedCertificate ? { result: cachedCertificate.subjectDN || "" } : { error: { code: -32000, message: "No certificate" } };

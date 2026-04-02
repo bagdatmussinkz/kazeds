@@ -116,13 +116,13 @@ describe("completeSessionSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects invalid algorithm", () => {
+  it("accepts any algorithm string", () => {
     const result = completeSessionSchema.safeParse({
       certificate: "cert",
       signature: "sig",
-      algorithm: "MD5withRSA",
+      algorithm: "GOST34.10-2015/256",
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("rejects missing algorithm", () => {

@@ -275,11 +275,13 @@
             let wireResponse;
 
             if (parsed.module === "kz.gov.pki.knca.basics") {
-              // NCALayer basics format: {status, body, code, message}
+              // NCALayer basics format: {status, body: {result: [...]}}
               if (response.error) {
                 wireResponse = { status: false, code: String(response.error.code), message: response.error.message };
               } else {
-                wireResponse = { status: true, body: { result: response.result } };
+                // basics.sign returns array of signatures
+                const r = response.result;
+                wireResponse = { status: true, body: { result: Array.isArray(r) ? r : [r] } };
               }
             } else if (parsed.module === "kz.gov.pki.knca.commonUtils") {
               // NCALayer commonUtils format: {code, responseObject}

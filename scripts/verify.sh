@@ -25,9 +25,54 @@ DATA="$1"
 SIG_B64="$2"
 PUBKEY_B64="${3:-}"
 
-# ECDSA → verify-web.sh
-if [ -n "$PUBKEY_B64" ]; then
+# ECDSA (SPKI key starts with MFk) → verify-web.sh
+if [ -n "$PUBKEY_B64" ] && echo "$PUBKEY_B64" | grep -q "^MFk"; then
   exec ./scripts/verify-web.sh "$DATA" "$SIG_B64" "$PUBKEY_B64"
+fi
+
+# GOST (X.509 cert starts with MIIE) → Docker verifier /verifyRaw
+if [ -n "$PUBKEY_B64" ] && echo "$PUBKEY_B64" | grep -q "^MII"; then
+  echo "========================================"
+  echo "  KazEDS — Верификация (Java ГОСТ)"
+  echo "========================================"
+  echo ""
+  echo "Данные:    $DATA"
+  echo "Подпись:   ${SIG_B64:0:40}..."
+  echo "Сервер:    $VERIFIER_URL"
+  echo ""
+
+  DATA_B64=$(echo -n "$DATA" | openssl base64 -A)
+
+  RESPONSE=$(curl -s -w "\n%{http_code}" \
+    -X POST "$VERIFIER_URL/verifyRaw" \
+    -H "Content-Type: application/json" \
+    -d "{\"data\":\"$DATA_B64\",\"signature\":\"$SIG_B64\",\"certificate\":\"$PUBKEY_B64\"}" \
+    2>/dev/null || echo -e "\n000")
+
+  HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+  BODY=$(echo "$RESPONSE" | sed '$d')
+
+  if echo "$BODY" | grep -q '"valid":true'; then
+    echo "Результат: ПОДПИСЬ ВЕРНА"
+    echo ""
+    echo "$BODY" | python3 -c "
+import sys,json
+d = json.load(sys.stdin)
+print('  Субъект:    ', d.get('subject',''))
+print('  Издатель:   ', d.get('issuer',''))
+print('  Serial:      ', d.get('serial',''))
+print('  Действует:   ', d.get('notBefore',''), '—', d.get('notAfter',''))
+if d.get('note'): print('  Примечание:  ', d.get('note'))
+" 2>/dev/null || echo "  $BODY"
+    exit 0
+  elif [ "$HTTP_CODE" = "000" ]; then
+    echo "Verifier недоступен. Запустите Docker."
+    exit 1
+  else
+    echo "Результат: ПОДПИСЬ НЕВАЛИДНА (HTTP $HTTP_CODE)"
+    echo "  $BODY"
+    exit 1
+  fi
 fi
 
 # ГОСТ → наш Java Verifier

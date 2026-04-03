@@ -238,6 +238,8 @@
         if (this.readyState !== 1) return;
         const text = typeof data === "string" ? data : String(data);
 
+        console.log("[KazEDS] WS.send raw:", text.slice(0, 200));
+
         // Heartbeat handling (matches real NCALayer)
         if (text === HEARTBEAT_MSG) {
           this.dispatchEvent(new MessageEvent("message", { data: HEARTBEAT_MSG }));
@@ -246,11 +248,11 @@
         if (text.trim() === "{}") return; // silent keepalive
 
         let parsed;
-        try { parsed = JSON.parse(text); } catch { return; }
+        try { parsed = JSON.parse(text); } catch { console.log("[KazEDS] WS.send: not JSON"); return; }
 
         // Validate: must have module + (method or command or type)
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return;
-        if (!parsed.module || (!parsed.method && !parsed.command && !parsed.type)) return;
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) { console.log("[KazEDS] WS.send: invalid object"); return; }
+        if (!parsed.module || (!parsed.method && !parsed.command && !parsed.type)) { console.log("[KazEDS] WS.send: no module/method, dropping:", JSON.stringify(parsed).slice(0, 100)); return; }
 
         const module = parsed.module;
         const method = parsed.method || parsed.command || parsed.type;

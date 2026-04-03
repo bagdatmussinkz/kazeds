@@ -182,18 +182,18 @@
 
     if (method === "signXml") {
       const xml = params[2];
-      // Pass raw XML — relay/web-app will handle encoding
-      const r = await handleSignRequest(origin, "sign", btoa(unescape(encodeURIComponent(xml))));
+      // Pass raw XML with format=xml so Web App uses signXML (XMLDSig)
+      const r = await handleSignRequest(origin, "signxml", btoa(unescape(encodeURIComponent(xml))));
       if (r.error) return errorCommon(r.error.message);
       return successCommon(r.result.signature);
     }
 
     if (method === "signXmls") {
       const xmls = params[2];
-      if (!Array.isArray(xmls)) return successCommon([]); // fallback empty
+      if (!Array.isArray(xmls)) return successCommon([]);
       const results = [];
       for (const xml of xmls) {
-        const r = await handleSignRequest(origin, "sign", btoa(unescape(encodeURIComponent(xml))));
+        const r = await handleSignRequest(origin, "signxml", btoa(unescape(encodeURIComponent(xml))));
         if (r.error) return errorCommon(r.error.message);
         results.push(r.result.signature);
       }
@@ -329,7 +329,7 @@
     hideQROverlay();
     const sessionId = session.session_id;
     const payload = session.qr_payload;
-    const deepLink = `${APP_URL}/#/sign?session=${sessionId}&challenge=${encodeURIComponent(payload.challenge || "")}&origin=${encodeURIComponent(payload.origin || window.location.origin)}&callback=${encodeURIComponent(payload.callback_url || "")}&data=${encodeURIComponent(payload.data_b64 || "")}&op=${operation}`;
+    const deepLink = `${APP_URL}/#/sign?session=${sessionId}&challenge=${encodeURIComponent(payload.challenge || "")}&origin=${encodeURIComponent(payload.origin || window.location.origin)}&callback=${encodeURIComponent(payload.callback_url || "")}&data=${encodeURIComponent(payload.data_b64 || "")}&op=${operation}&fmt=${operation === "signxml" ? "xml" : "cms"}`;
     const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(deepLink)}`;
     const expiresMs = new Date(session.expires_at).getTime() - Date.now();
     const totalMs = expiresMs > 0 ? expiresMs : 300000;

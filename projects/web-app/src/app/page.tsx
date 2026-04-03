@@ -12,7 +12,8 @@ interface SignParams {
   origin: string;
   callback: string;
   data: string;
-  op: "sign" | "auth";
+  op: "sign" | "auth" | "signxml";
+  fmt: string; // "cms" | "xml"
 }
 
 type Route = { page: "home" } | { page: "sign"; params: SignParams };
@@ -38,9 +39,11 @@ function parseHash(): Route {
   const origin = search.get("origin");
   const callback = search.get("callback");
   const data = search.get("data") ?? "";
-  const op = search.get("op") === "auth" ? "auth" : "sign";
+  const opRaw = search.get("op") || "sign";
+  const op = opRaw === "auth" ? "auth" : opRaw === "signxml" ? "signxml" : "sign";
+  const fmt = search.get("fmt") || "cms";
   if (!session || !challenge || !origin || !callback) return { page: "home" };
-  return { page: "sign", params: { session, challenge, origin, callback, data, op } };
+  return { page: "sign", params: { session, challenge, origin, callback, data, op, fmt } };
 }
 
 function base64ToBuffer(b64: string): ArrayBuffer {
@@ -401,16 +404,30 @@ function SigningPage({ params }: { params: SignParams }) {
           setState({ status: "error", message: "Выберите .p12 файл и введите пароль" });
           return;
         }
-        // Sign CMS (PKCS#7) — real sites expect CMS format, not raw
-        const { signCMSWithGOST, signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
         const dataToSign = params.data || params.challenge;
-        const cmsB64 = await signCMSWithGOST(p12File, p12Password, dataToSign, false); // attached CMS
-        const rawResult = await signRawGOST(p12File, p12Password, dataToSign);
-        result = {
-          ...rawResult,
-          signature: cmsB64, // CMS as main signature (sites expect this)
-          cmsSignature: cmsB64,
-        };
+
+        if (params.fmt === "xml") {
+          // XMLDSig — enveloped XML signature (for signXml/signXmls)
+          const { signXMLWithGOST, signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
+          // Decode base64 → raw XML string
+          const xmlString = atob(dataToSign);
+          const signedXml = await signXMLWithGOST(p12File, p12Password, xmlString);
+          const rawResult = await signRawGOST(p12File, p12Password, dataToSign);
+          result = {
+            ...rawResult,
+            signature: signedXml, // Signed XML document (not CMS!)
+          };
+        } else {
+          // CMS/PKCS#7 — for createCAdES, basicsSignCMS, etc.
+          const { signCMSWithGOST, signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
+          const cmsB64 = await signCMSWithGOST(p12File, p12Password, dataToSign, false);
+          const rawResult = await signRawGOST(p12File, p12Password, dataToSign);
+          result = {
+            ...rawResult,
+            signature: cmsB64,
+            cmsSignature: cmsB64,
+          };
+        }
       } else {
         const dataToSign = params.data || params.challenge;
         result = await signWithECDSA(dataToSign);

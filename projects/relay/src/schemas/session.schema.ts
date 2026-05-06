@@ -5,6 +5,7 @@ export const createSessionSchema = z.object({
   operation: z.enum(["auth", "sign"]),
   data: z.string().optional(), // base64
   reason: z.string().optional(),
+  format: z.enum(["cms", "xml"]).optional(),
 });
 
 export const completeSessionSchema = z.object({
@@ -14,5 +15,6 @@ export const completeSessionSchema = z.object({
   subjectDN: z.string().optional(),
   notBefore: z.string().optional(),
   notAfter: z.string().optional(),
+  signedDocument: z.string().optional(),
   cmsSignature: z.string().optional(),
 });

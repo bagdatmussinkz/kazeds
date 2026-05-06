@@ -1,18 +1,10 @@
 {
   "manifest_version": 3,
   "name": "KazEDS",
-  "version": "3.0.0",
-  "description": "Замена NCALayer — ЭЦП через мобильное приложение",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "nativeMessaging"
-  ],
-  "host_permissions": [
-    "http://relay.kazeds.kz/*",
-    "https://relay-sign.aitu.uz/*",
-    "http://localhost:3001/*"
-  ],
+  "description": "NCALayer replacement — sign with your phone via QR code",
+  "version": "2.0.3",
+  "permissions": ["storage", "scripting"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background/service-worker.js",
     "type": "module"
@@ -20,27 +12,39 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content/content-script.js"],
-      "run_at": "document_start"
-    }
-  ],
-  "web_accessible_resources": [
+      "js": ["src/content/ws-intercept.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
+    },
     {
-      "resources": ["eds.js"],
-      "matches": ["<all_urls>"]
+      "matches": ["<all_urls>"],
+      "js": ["src/content/bridge.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
     }
   ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
-    "default_popup": "src/popup/popup.html",
+    "default_title": "KazEDS",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",
       "128": "icons/icon-128.png"
     }
   },
-  "icons": {
-    "16": "icons/icon-16.png",
-    "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
-  }
+  "web_accessible_resources": [
+    {
+      "resources": ["src/content/qr-overlay.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

@@ -21,6 +21,21 @@ export async function sessionRoutes(app: FastifyInstance) {
     return reply.status(201).send(result);
   });
 
+  // GET /v1/sessions/:id/payload — full session data for web app (called after QR scan)
+  app.get("/sessions/:id/payload", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const payload = app.sessionStore.getPayload(id);
+
+    if (!payload) {
+      return reply.status(404).send({ error: "Not found", message: "Session not found" });
+    }
+
+    // Mark as scanned
+    app.sessionStore.markScanned(id);
+
+    return reply.send(payload);
+  });
+
   // GET /v1/sessions/:id/status — polling статуса
   app.get("/sessions/:id/status", async (request, reply) => {
     const { id } = request.params as { id: string };

@@ -60,7 +60,7 @@ export class SessionStore {
 
     // Добавить data для sign операций
     if (req.operation === "sign" && req.data) {
-      (qr_payload as any).data_b64 = req.data;
+      qr_payload.data_b64 = req.data;
       const crypto = require("crypto");
       const dataBuffer = Buffer.from(req.data, "base64");
       qr_payload.data_hash = crypto
@@ -69,12 +69,47 @@ export class SessionStore {
         .digest("hex");
     }
 
+    // Pass format hint to web app
+    if (req.format) {
+      qr_payload.format = req.format;
+    }
+
     return {
       session_id: id,
       challenge,
       qr_payload,
       expires_at: expiresAt.toISOString(),
     };
+  }
+
+  getPayload(id: string) {
+    const session = this.sessions.get(id);
+    if (!session) return null;
+
+    if (session.status === "pending" && session.expiresAt < new Date()) {
+      session.status = "expired";
+    }
+
+    if (session.status !== "pending" && session.status !== "scanned") {
+      return null; // only allow payload fetch for active sessions
+    }
+
+    return {
+      session_id: session.id,
+      origin: session.origin,
+      operation: session.operation,
+      challenge: session.challenge,
+      data: session.data || null,
+      callback_url: `${RELAY_BASE_URL}/sessions/${session.id}/complete`,
+      expires_at: session.expiresAt.toISOString(),
+    };
+  }
+
+  markScanned(id: string) {
+    const session = this.sessions.get(id);
+    if (session && session.status === "pending") {
+      session.status = "scanned";
+    }
   }
 
   getStatus(id: string) {

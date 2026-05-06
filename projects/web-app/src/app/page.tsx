@@ -14,6 +14,7 @@ interface SignParams {
   data: string;
   op: "sign" | "auth" | "signxml";
   fmt: string; // "cms" | "xml"
+  needsFetch?: boolean; // true when using short QR URL — must fetch from relay
 }
 
 type Route = { page: "home" } | { page: "sign"; params: SignParams };
@@ -21,11 +22,13 @@ type SigningState =
   | { status: "idle" }
   | { status: "signing" }
   | { status: "success"; signature: string; certificate: string; cmsSignature?: string }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; rawError?: string; stack?: string };
 
 type VerifyState = "idle" | "verifying" | "valid" | "invalid";
 
 // --- Helpers ---
+
+const RELAY_BASE = "https://relay-sign.aitu.uz/v1";
 
 function parseHash(): Route {
   if (typeof window === "undefined") return { page: "home" };
@@ -34,6 +37,28 @@ function parseHash(): Route {
   const qIndex = hash.indexOf("?");
   if (qIndex === -1) return { page: "home" };
   const search = new URLSearchParams(hash.slice(qIndex + 1));
+
+  // Short format: #/sign?s={sessionId}&f={fmt}
+  const shortSession = search.get("s");
+  if (shortSession) {
+    const fmt = search.get("f") || "cms";
+    const op = fmt === "xml" ? "signxml" : "sign";
+    return {
+      page: "sign",
+      params: {
+        session: shortSession,
+        challenge: "", // will be fetched from relay
+        origin: "",
+        callback: "",
+        data: "",
+        op,
+        fmt,
+        needsFetch: true, // flag to fetch full data from relay
+      },
+    };
+  }
+
+  // Legacy long format: #/sign?session=...&challenge=...&origin=...&callback=...
   const session = search.get("session");
   const challenge = search.get("challenge");
   const origin = search.get("origin");
@@ -67,6 +92,26 @@ function tryDecodeBase64Text(b64: string): string | null {
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch { return null; }
+}
+
+function friendlyError(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes("pkcs#12 parse error") || lower.includes("pkcs12")) {
+    if (lower.includes("invalid padding") || lower.includes("decrypt")) {
+      return "Неверный пароль к .p12 файлу. Проверьте пароль и попробуйте снова.";
+    }
+    return "Не удалось прочитать .p12 файл. Файл повреждён или имеет неподдерживаемый формат.";
+  }
+  if (lower.includes("session not found") || lower.includes("404")) {
+    return "Сессия не найдена или истекла. Запросите новый QR-код.";
+  }
+  if (lower.includes("session expired") || lower.includes("expired")) {
+    return "Сессия истекла. Запросите новый QR-код.";
+  }
+  if (lower.includes("network") || lower.includes("fetch") || lower.includes("failed to fetch")) {
+    return "Ошибка сети. Проверьте интернет-соединение.";
+  }
+  return raw;
 }
 
 // --- Root ---
@@ -323,7 +368,7 @@ function HomePage() {
           </button>
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v1.0 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.4 — Мобильная ЭЦП</p>
       </div>
     </main>
   );
@@ -331,10 +376,59 @@ function HomePage() {
 
 // ==================== Signing Page ====================
 
-function SigningPage({ params }: { params: SignParams }) {
+type TraceEvent = { ts: number; level: "info" | "warn" | "error"; msg: string; data?: unknown };
+
+function SigningPage({ params: initialParams }: { params: SignParams }) {
+  const [params, setParams] = useState<SignParams>(initialParams);
+  const [loading, setLoading] = useState(!!initialParams.needsFetch);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [state, setState] = useState<SigningState>({ status: "idle" });
   const [verifyState, setVerifyState] = useState<VerifyState>("idle");
   const [verifyInfo, setVerifyInfo] = useState<{ algorithm: string; curve: string; bits: number } | null>(null);
+  const [traceLog, setTraceLog] = useState<TraceEvent[]>([]);
+  const [traceOpen, setTraceOpen] = useState(false);
+  const traceStartRef = useRef<number>(Date.now());
+
+  const addTrace = useCallback((level: TraceEvent["level"], msg: string, data?: unknown) => {
+    const ev: TraceEvent = { ts: Date.now() - traceStartRef.current, level, msg, data };
+    setTraceLog((prev) => [...prev, ev]);
+    const log = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
+    log("[KazEDS trace]", `+${ev.ts}ms`, msg, data ?? "");
+  }, []);
+
+  // Fetch full session data from relay when using short QR URL
+  useEffect(() => {
+    if (!initialParams.needsFetch) return;
+    (async () => {
+      addTrace("info", "fetch session payload", { session: initialParams.session, fmt: initialParams.fmt, op: initialParams.op });
+      try {
+        const resp = await fetch(`${RELAY_BASE}/sessions/${initialParams.session}/payload`);
+        if (!resp.ok) throw new Error(`Session not found (${resp.status})`);
+        const payload = await resp.json();
+        addTrace("info", "session payload received", {
+          origin: payload.origin,
+          operation: payload.operation,
+          dataLen: payload.data?.length || 0,
+          challengeLen: payload.challenge?.length || 0,
+        });
+        setParams({
+          session: payload.session_id,
+          challenge: payload.challenge || "",
+          origin: payload.origin || "",
+          callback: payload.callback_url || "",
+          data: payload.data || "",
+          op: initialParams.op,
+          fmt: initialParams.fmt,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to load session";
+        addTrace("error", "fetch payload failed", { error: msg });
+        setFetchError(msg);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [initialParams, addTrace]);
 
   const handleVerify = useCallback(async () => {
     if (state.status !== "success") return;
@@ -396,48 +490,56 @@ function SigningPage({ params }: { params: SignParams }) {
 
   const handleSign = useCallback(async () => {
     setState({ status: "signing" });
+    addTrace("info", "sign start", { method, fmt: params.fmt, op: params.op, p12FileName, hasPassword: !!p12Password });
     try {
       let result: SignResult;
 
       if (method === "GOST") {
         if (!p12File || !p12Password) {
+          addTrace("error", "missing p12 or password");
           setState({ status: "error", message: "Выберите .p12 файл и введите пароль" });
           return;
         }
         const dataToSign = params.data || params.challenge;
+        addTrace("info", "GOST branch", { fmt: params.fmt, dataLen: dataToSign.length });
 
         if (params.fmt === "xml") {
-          // XMLDSig — enveloped XML signature (for signXml/signXmls)
           const { signXMLWithGOST, signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
-          // Decode base64 → raw XML string
           const xmlString = atob(dataToSign);
+          addTrace("info", "signXMLWithGOST call", { xmlLen: xmlString.length });
           const signedXml = await signXMLWithGOST(p12File, p12Password, xmlString);
+          addTrace("info", "signXMLWithGOST done", { signedLen: signedXml.length });
           const rawResult = await signRawGOST(p12File, p12Password, dataToSign);
-          result = {
-            ...rawResult,
-            signature: signedXml, // Signed XML document (not CMS!)
-          };
+          addTrace("info", "raw GOST sign done", { sigLen: rawResult.signature.length, certLen: rawResult.certificate.length });
+          result = { ...rawResult, signature: signedXml };
         } else {
-          // CMS/PKCS#7 — for createCAdES, basicsSignCMS, etc.
           const { signCMSWithGOST, signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
+          addTrace("info", "signCMSWithGOST call");
           const cmsB64 = await signCMSWithGOST(p12File, p12Password, dataToSign, false);
+          addTrace("info", "signCMSWithGOST done", { cmsLen: cmsB64.length });
           const rawResult = await signRawGOST(p12File, p12Password, dataToSign);
-          result = {
-            ...rawResult,
-            signature: cmsB64,
-            cmsSignature: cmsB64,
-          };
+          addTrace("info", "raw GOST sign done", { sigLen: rawResult.signature.length });
+          result = { ...rawResult, signature: cmsB64, cmsSignature: cmsB64 };
         }
       } else {
         const dataToSign = params.data || params.challenge;
+        addTrace("info", "ECDSA branch", { dataLen: dataToSign.length });
         result = await signWithECDSA(dataToSign);
+        addTrace("info", "ECDSA sign done", { sigLen: result.signature.length });
       }
 
-      await completeSession(params.session, {
+      const completeData: any = {
         certificate: result.certificate,
-        signature: result.signature, // CMS for GOST, raw for ECDSA
-        algorithm: result.algorithm as any,
-      } as any, params.callback);
+        signature: result.signature,
+        algorithm: result.algorithm,
+      };
+      if (result.cmsSignature) completeData.cmsSignature = result.cmsSignature;
+      if (params.fmt === "xml" && result.signature) {
+        completeData.signedDocument = result.signature;
+      }
+      addTrace("info", "completeSession call", { session: params.session, hasCallback: !!params.callback });
+      await completeSession(params.session, completeData, params.callback);
+      addTrace("info", "completeSession done");
 
       setState({
         status: "success",
@@ -446,9 +548,47 @@ function SigningPage({ params }: { params: SignParams }) {
         cmsSignature: result.cmsSignature,
       });
     } catch (err) {
-      setState({ status: "error", message: err instanceof Error ? err.message : "Неизвестная ошибка" });
+      const raw = err instanceof Error ? err.message : "Неизвестная ошибка";
+      const stack = err instanceof Error ? err.stack : undefined;
+      addTrace("error", "sign failed", { raw, stack });
+      setState({ status: "error", message: friendlyError(raw), rawError: raw, stack });
     }
-  }, [params, method, p12File, p12Password]);
+  }, [params, method, p12File, p12Password, p12FileName, addTrace]);
+
+  const buildDebugReport = useCallback((): string => {
+    const errInfo = state.status === "error" ? { friendly: state.message, raw: state.rawError, stack: state.stack } : null;
+    const report = {
+      version: "2.0.4",
+      time: new Date().toISOString(),
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "n/a",
+      session: params.session,
+      origin: params.origin,
+      operation: params.op,
+      format: params.fmt,
+      method,
+      p12: { fileName: p12FileName || null, hasPassword: !!p12Password },
+      dataLen: params.data?.length || 0,
+      challengeLen: params.challenge?.length || 0,
+      error: errInfo,
+      trace: traceLog,
+    };
+    return JSON.stringify(report, null, 2);
+  }, [state, params, method, p12FileName, p12Password, traceLog]);
+
+  const copyDebugReport = useCallback(async () => {
+    const text = buildDebugReport();
+    try {
+      await navigator.clipboard.writeText(text);
+      addTrace("info", "debug report copied to clipboard", { len: text.length });
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch {}
+      document.body.removeChild(ta);
+    }
+  }, [buildDebugReport, addTrace]);
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-6">
@@ -494,7 +634,18 @@ function SigningPage({ params }: { params: SignParams }) {
           </div>
           <div className="border-t border-slate-100" />
 
-          {state.status === "idle" && (
+          {loading && (
+            <div className="flex flex-col items-center py-6 gap-3">
+              <div className="w-8 h-8 border-2 border-[#1F4E79] border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-slate-500">Загрузка данных сессии...</p>
+            </div>
+          )}
+          {fetchError && (
+            <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm ring-1 ring-red-200">
+              {fetchError}
+            </div>
+          )}
+          {!loading && !fetchError && state.status === "idle" && (
             <div className="space-y-3">
               {/* Method selector */}
               <div className="flex gap-2">
@@ -626,23 +777,40 @@ function SigningPage({ params }: { params: SignParams }) {
             </div>
           )}
           {state.status === "error" && (
-            <div className="flex flex-col items-center py-4 gap-3">
+            <div className="flex flex-col items-center py-4 gap-3 w-full">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                 <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
               <p className="text-red-600 font-semibold">Ошибка</p>
-              <p className="text-slate-400 text-sm text-center">{state.message}</p>
-              <button onClick={() => setState({ status: "idle" })}
-                className="px-6 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition">
-                Попробовать снова
+              <p className="text-slate-400 text-sm text-center px-2">{state.message}</p>
+              <div className="flex gap-2 w-full">
+                <button onClick={() => setState({ status: "idle" })}
+                  className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition">
+                  Попробовать снова
+                </button>
+                <button onClick={copyDebugReport}
+                  className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-200 transition">
+                  Копировать debug
+                </button>
+              </div>
+              <button onClick={() => setTraceOpen((v) => !v)}
+                className="text-xs text-slate-400 hover:text-slate-600 underline mt-1">
+                {traceOpen ? "Скрыть" : "Показать"} технические детали ({traceLog.length} событий)
               </button>
+              {traceOpen && (
+                <div className="w-full bg-slate-900 rounded-lg p-3 max-h-64 overflow-auto">
+                  <pre className="text-[10px] font-mono text-slate-300 whitespace-pre-wrap break-all">
+                    {buildDebugReport()}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v1.0 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.4 — Мобильная ЭЦП</p>
       </div>
     </main>
   );

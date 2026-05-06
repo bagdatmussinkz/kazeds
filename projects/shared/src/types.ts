@@ -15,6 +15,8 @@ export interface QRPayload {
   callback_url: string; // HTTPS URL на Cloud Relay
   created_at: string; // ISO 8601
   expires_at: string; // ISO 8601
+  format?: "cms" | "xml"; // signing format hint
+  data_b64?: string; // base64 data for signing
 }
 
 export type OperationType = "auth" | "sign";
@@ -52,9 +54,11 @@ export interface SigningResult {
   subjectDN?: string;
   notBefore?: string;
   notAfter?: string;
+  signedDocument?: string; // signed XML document (for signXml operations)
+  cmsSignature?: string; // CMS/PKCS#7 signature (PEM or base64)
 }
 
-export type SigningAlgorithm = "SHA256withRSA" | "SHA256withECDSA";
+export type SigningAlgorithm = "SHA256withRSA" | "SHA256withECDSA" | string;
 
 // --- API: Create Session (Extension → Cloud Relay) ---
 
@@ -63,6 +67,7 @@ export interface CreateSessionRequest {
   operation: OperationType;
   data?: string; // base64 (для sign)
   reason?: string;
+  format?: "cms" | "xml"; // signing format hint for web app
 }
 
 export interface CreateSessionResponse {
@@ -89,6 +94,8 @@ export interface CompleteSessionRequest {
   subjectDN?: string;
   notBefore?: string;
   notAfter?: string;
+  signedDocument?: string; // signed XML document
+  cmsSignature?: string; // CMS/PKCS#7 signature
 }
 
 export interface CompleteSessionResponse {

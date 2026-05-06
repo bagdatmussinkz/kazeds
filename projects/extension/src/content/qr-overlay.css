@@ -1,0 +1,153 @@
+/* KazEDS QR Overlay Styles */
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.overlay-backdrop.visible { opacity: 1; }
+
+.overlay-dialog {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  max-width: 380px;
+  width: 90%;
+  transform: scale(0.95);
+  transition: transform 0.2s ease;
+}
+.overlay-backdrop.visible .overlay-dialog { transform: scale(1); }
+
+.qr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.qr-badge-auth { background: #eff6ff; color: #1d4ed8; }
+.qr-badge-sign { background: #fef3c7; color: #92400e; }
+
+.qr-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 4px;
+}
+.qr-subtitle {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 20px;
+}
+
+.qr-domain {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 16px;
+  padding: 6px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.qr-image-wrap {
+  display: block;
+  width: 280px;
+  margin: 0 auto 20px;
+  position: relative;
+}
+.qr-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.qr-progress {
+  width: 100%;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.qr-progress-bar {
+  height: 100%;
+  background: #1F4E79;
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+.qr-countdown {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 12px;
+}
+.qr-countdown strong {
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+}
+
+.qr-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 16px;
+}
+.qr-status-scanned {
+  color: #16a34a;
+}
+
+.qr-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #1F4E79;
+  border-radius: 50%;
+  animation: kazeds-spin 0.8s linear infinite;
+}
+.qr-spinner-green {
+  border-color: #bbf7d0;
+  border-top-color: #16a34a;
+}
+
+@keyframes kazeds-spin {
+  to { transform: rotate(360deg); }
+}
+
+.qr-btn-cancel {
+  display: inline-block;
+  padding: 8px 24px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.qr-btn-cancel:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.qr-branding {
+  margin-top: 16px;
+  font-size: 11px;
+  color: #cbd5e1;
+}

@@ -5,7 +5,7 @@ const SESSION_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const CLEANUP_INTERVAL_MS = 60 * 1000; // 1 minute
 const RETAIN_AFTER_COMPLETE_MS = 5 * 60 * 1000; // 5 minutes
 
-const RELAY_BASE_URL = process.env.RELAY_PUBLIC_URL || "https://relay-sign.aitu.uz";
+const RELAY_BASE_URL = process.env.RELAY_PUBLIC_URL || "https://sign.aitu.uz/relay";
 
 type EgovSessionStatus = "pending" | "scanned" | "completed" | "rejected" | "expired";
 

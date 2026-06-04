@@ -33,8 +33,8 @@ export async function initWasm(): Promise<void> {
 
   const go = new (globalThis as any).Go();
 
-  // Fetch WASM from public directory
-  const wasmURL = "/wasm/crypto.wasm";
+  // Fetch WASM from public directory. Must match Next.js basePath ("/app" in production).
+  const wasmURL = "/app/wasm/crypto.wasm";
   const wasmResponse = fetch(wasmURL);
   const result = await WebAssembly.instantiateStreaming(wasmResponse, go.importObject);
 

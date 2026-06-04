@@ -3,10 +3,19 @@
 // ============================================================
 
 // --- Cloud Relay ---
+// Unified host: sign.aitu.uz/relay is proxied by nginx to the Relay backend.
 export const RELAY_URL =
-  process.env.KAZEDS_RELAY_URL || "https://relay-sign.aitu.uz";
+  process.env.KAZEDS_RELAY_URL || "https://sign.aitu.uz/relay";
 export const RELAY_API_VERSION = "v1";
 export const RELAY_BASE_URL = `${RELAY_URL}/${RELAY_API_VERSION}`;
+
+// --- Web App (PWA) ---
+export const WEB_APP_URL =
+  process.env.KAZEDS_WEB_APP_URL || "https://sign.aitu.uz/app";
+
+// --- Extension / widget CDN ---
+export const WIDGET_URL =
+  process.env.KAZEDS_WIDGET_URL || "https://sign.aitu.uz/ext";
 
 // --- Session ---
 export const SESSION_TTL_SECONDS = 300; // 5 минут

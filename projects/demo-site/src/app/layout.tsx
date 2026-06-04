@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           document.head.appendChild(tw);
           // eds.js widget — uncomment for development without extension
           // var eds = document.createElement('script');
-          // eds.src = 'https://extension-sign.aitu.uz/eds.js';
+          // eds.src = 'https://sign.aitu.uz/ext/eds.js';
           // document.head.appendChild(eds);
         `}} />
       </head>

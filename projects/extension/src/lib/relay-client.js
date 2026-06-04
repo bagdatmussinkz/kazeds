@@ -1,6 +1,6 @@
 // Relay server client for KazEDS signing flow
 
-const RELAY_URL = "https://relay-sign.aitu.uz/v1";
+const RELAY_URL = "https://sign.aitu.uz/relay/v1";
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLLS = 150; // 5 minutes
 
@@ -37,7 +37,7 @@ export async function cancelSession(sessionId) {
 }
 
 export function getAppURL() {
-  return "https://app-sign.aitu.uz";
+  return "https://sign.aitu.uz/app";
 }
 
 export function buildDeepLink(session, format) {

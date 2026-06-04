@@ -151,7 +151,7 @@ describe("POST /v1/sessions/:id/complete", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("400 — invalid algorithm", async () => {
+  it("200 — accepts any algorithm (GOST, ECDSA, etc)", async () => {
     const create = await inject("POST", "/v1/sessions", {
       origin: "https://test.kz",
       operation: "auth",
@@ -161,9 +161,9 @@ describe("POST /v1/sessions/:id/complete", () => {
     const res = await inject("POST", `/v1/sessions/${sessionId}/complete`, {
       certificate: "cert",
       signature: "sig",
-      algorithm: "MD5withRSA",
+      algorithm: "GOST34.10-2015/512",
     });
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(200);
   });
 
   it("404 — non-existent session", async () => {

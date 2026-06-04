@@ -10,14 +10,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru">
       <head>
-        <style dangerouslySetInnerHTML={{ __html: `html:not(.ready) body { opacity: 0; }` }} />
         <script dangerouslySetInnerHTML={{ __html: `
-          var t = document.createElement('script');
-          t.src = 'https://cdn.tailwindcss.com';
-          t.onload = function() { document.documentElement.classList.add('ready'); };
-          document.head.appendChild(t);
+          // Load Tailwind CSS + eds.js, then show page
+          document.documentElement.style.opacity='0';
+          var tw = document.createElement('script');
+          tw.src = 'https://cdn.tailwindcss.com';
+          tw.onload = function() { document.documentElement.style.opacity='1'; };
+          document.head.appendChild(tw);
+          // eds.js widget — uncomment for development without extension
+          // var eds = document.createElement('script');
+          // eds.src = 'https://extension-sign.aitu.uz/eds.js';
+          // document.head.appendChild(eds);
         `}} />
-        <script src="http://extension.sign.aitu.uz/eds.js" />
       </head>
       <body className="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen antialiased">
         {children}

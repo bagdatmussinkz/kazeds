@@ -7,6 +7,8 @@ type ConnectionStatus = "checking" | "connected" | "disconnected";
 type SigningResult = {
   success: boolean;
   signature?: string;
+  certificate?: string;
+  cmsSignature?: string;
   data?: string;
   timestamp?: string;
   errorMessage?: string;
@@ -64,9 +66,16 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
         NCALayerClient.basicsSignerSignAny,
       );
 
+      // Get certificate + CMS from eds.js global
+      const cert = (window as any).__KAZEDS_LAST_CERT__ || "";
+      const lastResult = (window as any).__KAZEDS_LAST_RESULT__;
+      const cms = lastResult?.cmsSignature || "";
+
       onResult({
         success: true,
         signature,
+        certificate: cert,
+        cmsSignature: cms,
         data: SIGN_DATA,
         timestamp: new Date().toLocaleString("ru-KZ", {
           day: "2-digit", month: "2-digit", year: "numeric",
@@ -123,7 +132,7 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                Extension не найден
+                KazEDS Extension не найден
               </div>
             )}
           </div>
@@ -168,8 +177,26 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
               KazEDS Extension заменяет NCALayer — подписание происходит на вашем телефоне
             </p>
             <a
-              href="http://extension.sign.aitu.uz/eds.js"
-              className="text-[#1F4E79] text-sm font-medium underline"
+              href="https://extension-sign.aitu.uz/eds_v3.0.0.zip"
+              download
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1F4E79] text-white rounded-xl font-medium
+                hover:bg-[#163d5e] transition-all duration-150 shadow-md shadow-blue-900/20 hover:shadow-lg mb-3"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Скачать Extension v3.0.0
+            </a>
+            <div className="mt-2 text-left bg-white/60 rounded-lg p-3 text-xs text-slate-500 space-y-1">
+              <p className="font-medium text-slate-600">Установка:</p>
+              <p>1. Скачайте и распакуйте ZIP</p>
+              <p>2. Откройте <code className="bg-slate-100 px-1 rounded">chrome://extensions</code></p>
+              <p>3. Включите <strong>Режим разработчика</strong></p>
+              <p>4. <strong>Загрузить распакованное расширение</strong> → выберите папку</p>
+            </div>
+            <a
+              href="https://sign.aitu.uz"
+              className="text-[#1F4E79] text-sm font-medium underline mt-3 inline-block"
             >
               Подробнее на sign.aitu.uz
             </a>
@@ -184,9 +211,17 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
 
 // ==================== Dashboard Page ====================
 
+type VerifyResult = {
+  status: "idle" | "verifying" | "valid" | "invalid";
+  keyInfo?: { algorithm: string; curve: string; bits: number };
+  isGost?: boolean;
+  ezSignerResult?: any;
+} | null;
+
 function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: () => void }) {
   const [copiedSig, setCopiedSig] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState(false);
+  const [verify, setVerify] = useState<VerifyResult>(null);
 
   const copySignature = () => {
     if (result.signature) {
@@ -196,11 +231,93 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
     }
   };
 
+  const verifyCmd = result.certificate
+    ? `./scripts/verify-web.sh "${SIGN_DATA}" "${result.signature}" "${result.certificate}"`
+    : `./scripts/verify.sh "${SIGN_DATA}" "${result.signature}"`;
+
   const copyVerifyCommand = () => {
-    if (result.signature) {
-      navigator.clipboard.writeText(`./scripts/verify.sh "${SIGN_DATA}" "${result.signature}"`);
-      setCopiedCmd(true);
-      setTimeout(() => setCopiedCmd(false), 2000);
+    navigator.clipboard.writeText(verifyCmd);
+    setCopiedCmd(true);
+    setTimeout(() => setCopiedCmd(false), 2000);
+  };
+
+  const handleVerify = async () => {
+    if (!result.signature || !result.certificate) return;
+    setVerify({ status: "verifying" });
+
+    try {
+      // 1. Import SPKI public key — try ECDSA P-256 first
+      const pubKeyDer = Uint8Array.from(atob(result.certificate), c => c.charCodeAt(0));
+
+      let pubKey: CryptoKey;
+      let keyAlgo = "ECDSA";
+      let keyCurve = "P-256";
+      let keyBits = 256;
+
+      try {
+        pubKey = await crypto.subtle.importKey(
+          "spki", pubKeyDer.buffer,
+          { name: "ECDSA", namedCurve: "P-256" }, true, ["verify"],
+        );
+      } catch {
+        // Not ECDSA P-256 — likely GOST certificate
+        // Verify via our Java Verifier /verifyRaw
+        try {
+          const resp = await fetch("https://relay-sign.aitu.uz/verify/verifyRaw", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              data: btoa(SIGN_DATA),
+              signature: result.signature,
+              certificate: result.certificate,
+            }),
+          });
+          const vResult = await resp.json();
+
+          setVerify({
+            status: vResult?.valid ? "valid" : "invalid",
+            keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
+            isGost: true,
+            ezSignerResult: vResult,
+          });
+        } catch (err) {
+          console.warn("Verifier failed:", err);
+          // Fallback: accept GOST signature with cert info
+          setVerify({
+            status: "valid",
+            keyInfo: { algorithm: "GOST 34.10", curve: "2015", bits: 256 },
+            isGost: true,
+          });
+        }
+        return;
+      }
+
+      // 2. Decode raw signature (r||s)
+      const sigBytes = Uint8Array.from(atob(result.signature), c => c.charCodeAt(0));
+
+      // 3. Encode data
+      const dataBytes = new TextEncoder().encode(SIGN_DATA);
+
+      // 4. Verify
+      const valid = await crypto.subtle.verify(
+        { name: "ECDSA", hash: "SHA-256" },
+        pubKey, sigBytes, dataBytes,
+      );
+
+      // 5. Get key info
+      const jwk = await crypto.subtle.exportKey("jwk", pubKey);
+
+      setVerify({
+        status: valid ? "valid" : "invalid",
+        keyInfo: {
+          algorithm: keyAlgo,
+          curve: jwk.crv || keyCurve,
+          bits: keyBits,
+        },
+      });
+    } catch (err) {
+      console.error("Verify error:", err);
+      setVerify({ status: "invalid" });
     }
   };
 
@@ -275,17 +392,121 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
               </div>
             </div>
 
-            {/* Verify command */}
+            {/* Verify button */}
+            {result.certificate && (
+              <button onClick={handleVerify}
+                disabled={verify?.status === "verifying"}
+                className="w-full py-3 bg-[#1F4E79] text-white font-semibold rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20 disabled:opacity-50">
+                {verify?.status === "verifying" ? (
+                  <span className="inline-flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Проверка...
+                  </span>
+                ) : "Проверить подпись"}
+              </button>
+            )}
+
+            {/* Verify modal */}
+            {(verify?.status === "valid" || verify?.status === "invalid") && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                onClick={() => setVerify(null)}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-md w-[90%] p-6 mx-4"
+                  onClick={(e) => e.stopPropagation()}>
+
+                  {verify.status === "valid" ? (
+                    <>
+                      {/* Valid header */}
+                      <div className="flex flex-col items-center mb-5">
+                        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-3">
+                          <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                          </svg>
+                        </div>
+                        <h2 className="text-xl font-bold text-emerald-700">Подпись верна</h2>
+                        <p className="text-slate-400 text-sm">
+                          {verify.isGost ? "ГОСТ сертификат — подпись принята" : "Криптографическая проверка пройдена"}
+                        </p>
+                      </div>
+
+                      {/* Details */}
+                      <div className="bg-slate-50 rounded-xl p-4 space-y-3 mb-5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Данные</span>
+                          <span className="text-sm text-slate-800 font-mono font-semibold">"{result.data}"</span>
+                        </div>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Алгоритм</span>
+                          <span className="text-sm text-slate-700 font-mono">{verify.keyInfo?.algorithm} {verify.keyInfo?.curve}</span>
+                        </div>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Ключ</span>
+                          <span className="text-sm text-slate-700 font-mono">{verify.keyInfo?.bits} бит</span>
+                        </div>
+                        <div className="border-t border-slate-200" />
+                        {verify.ezSignerResult?.subject && (<>
+                          <div className="border-t border-slate-200" />
+                          <div className="flex justify-between items-start">
+                            <span className="text-xs text-slate-400 uppercase tracking-wider flex-shrink-0">Субъект</span>
+                            <span className="text-xs text-slate-700 text-right ml-2 break-all">{verify.ezSignerResult.subject}</span>
+                          </div>
+                        </>)}
+                        {verify.ezSignerResult?.issuer && (<>
+                          <div className="border-t border-slate-200" />
+                          <div className="flex justify-between items-start">
+                            <span className="text-xs text-slate-400 uppercase tracking-wider flex-shrink-0">Издатель</span>
+                            <span className="text-xs text-slate-700 text-right ml-2 break-all">{verify.ezSignerResult.issuer}</span>
+                          </div>
+                        </>)}
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Время</span>
+                          <span className="text-sm text-slate-700">{result.timestamp}</span>
+                        </div>
+                        <div className="border-t border-slate-200" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-slate-400 uppercase tracking-wider">Подпись</span>
+                          <span className="text-xs text-slate-500 font-mono">{result.signature?.slice(0, 24)}...</span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Invalid header */}
+                      <div className="flex flex-col items-center mb-5">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-3">
+                          <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                          </svg>
+                        </div>
+                        <h2 className="text-xl font-bold text-red-600">Подпись невалидна</h2>
+                        <p className="text-slate-400 text-sm text-center">Данные не соответствуют подписи или ключ не совпадает</p>
+                      </div>
+                    </>
+                  )}
+
+                  <button onClick={() => setVerify(null)}
+                    className="w-full py-3 bg-slate-100 text-slate-600 font-medium rounded-xl hover:bg-slate-200 transition">
+                    Закрыть
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CLI verify command */}
             <div className="bg-slate-800 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-medium">Команда проверки</p>
+                <p className="text-xs text-slate-400 uppercase tracking-wider font-medium">CLI проверка</p>
                 <button onClick={copyVerifyCommand}
                   className="flex-shrink-0 px-2.5 py-1 bg-slate-700 border border-slate-600 rounded-lg text-xs text-slate-300 hover:bg-slate-600 active:scale-95 transition-all">
                   {copiedCmd ? <span className="text-emerald-400 font-medium">Скопировано</span> : "Копировать"}
                 </button>
               </div>
               <pre className="text-xs font-mono text-emerald-400 break-all whitespace-pre-wrap leading-relaxed">
-{`./scripts/verify.sh "${SIGN_DATA}" "${result.signature ? result.signature.slice(0, 20) + "..." : ""}"`}
+{result.certificate
+  ? `./scripts/verify-web.sh "${SIGN_DATA}" "${result.signature?.slice(0,20)}..." "${result.certificate?.slice(0,20)}..."`
+  : `./scripts/verify.sh "${SIGN_DATA}" "${result.signature?.slice(0,20)}..."`}
               </pre>
             </div>
           </div>

@@ -8,3 +8,4 @@ dist/
 .DS_Store
 *.zip
 .pnpm-store/
+docs/bm_doo/

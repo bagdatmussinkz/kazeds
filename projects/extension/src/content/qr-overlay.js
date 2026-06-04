@@ -36,6 +36,8 @@
 
     overlayHost = document.createElement("div");
     overlayHost.id = "__kazeds_qr_overlay__";
+    if (data.sessionId) overlayHost.dataset.sessionId = data.sessionId;
+    if (data.deepLink) overlayHost.dataset.deepLink = data.deepLink;
     shadow = overlayHost.attachShadow({ mode: "closed" });
 
     const expiresMs = data.expiresAt ? new Date(data.expiresAt).getTime() - Date.now() : 300000;
@@ -62,7 +64,7 @@
             <span>Ожидание сканирования...</span>
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
-          <div class="qr-branding">KazEDS v2.0.3</div>
+          <div class="qr-branding">KazEDS v2.0.5</div>
         </div>
       </div>
     `;

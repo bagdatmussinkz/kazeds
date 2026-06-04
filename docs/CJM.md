@@ -15,7 +15,7 @@
 - `eds.js` перехватывает WebSocket `wss://127.0.0.1:13579`
 - `eds.js` создаёт сессию: `POST relay/v1/sessions`
   ```json
-  {"origin": "http://demo-sign.aitu.uz", "operation": "sign", "data": "ZGVtbw=="}
+  {"origin": "https://demo.aitu.uz", "operation": "sign", "data": "ZGVtbw=="}
   ```
 - Relay возвращает `session_id`, `challenge`, `qr_payload`
 - `eds.js` показывает QR overlay с deep link и круговым прогрессом (5 мин)
@@ -24,11 +24,11 @@
 
 QR содержит deep link:
 ```
-http://app-sign.aitu.uz/#/sign
+https://sign.aitu.uz/app/#/sign
   ?session=UUID
   &challenge=BASE64
-  &origin=http://demo-sign.aitu.uz
-  &callback=http://relay-sign.aitu.uz/v1/sessions/UUID/complete
+  &origin=https://demo.aitu.uz
+  &callback=https://sign.aitu.uz/relay/v1/sessions/UUID/complete
   &data=ZGVtbw==
   &op=sign
 ```

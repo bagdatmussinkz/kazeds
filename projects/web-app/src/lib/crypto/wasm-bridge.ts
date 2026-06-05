@@ -28,13 +28,14 @@ export async function initWasm(): Promise<void> {
 
   // Load Go runtime (wasm_exec.js sets globalThis.Go)
   if (!(globalThis as any).Go) {
+    // @ts-expect-error — wasm_exec.js is a side-effect script (Go runtime), not a module
     await import("./wasm_exec.js");
   }
 
   const go = new (globalThis as any).Go();
 
-  // Fetch WASM from public directory
-  const wasmURL = "/wasm/crypto.wasm";
+  // Fetch WASM from public directory. Must match Next.js basePath ("/app" in production).
+  const wasmURL = "/app/wasm/crypto.wasm";
   const wasmResponse = fetch(wasmURL);
   const result = await WebAssembly.instantiateStreaming(wasmResponse, go.importObject);
 
@@ -100,6 +101,29 @@ export async function signXML(
 ): Promise<string> {
   await ensureReady();
   const result = (globalThis as any).wasmSignXML(p12Base64, password, xmlString, []);
+  return unwrapResult(result);
+}
+
+/**
+ * Build an RFC 3161 timestamp request (DER, base64) for the given CMS.
+ * The WASM engine hashes the CMS SignerInfo signature value per CAdES-T.
+ */
+export async function buildTSARequest(cmsBase64: string): Promise<string> {
+  await ensureReady();
+  const result = (globalThis as any).wasmBuildTSARequest(cmsBase64);
+  return unwrapResult(result);
+}
+
+/**
+ * Embed a TSA response (base64 DER TimeStampResp) into the CMS as an
+ * unsigned attribute (signatureTimeStampToken) → CAdES-T.
+ */
+export async function applyTSAResponse(
+  cmsBase64: string,
+  tsaResponseBase64: string,
+): Promise<string> {
+  await ensureReady();
+  const result = (globalThis as any).wasmApplyTSAResponse(cmsBase64, tsaResponseBase64);
   return unwrapResult(result);
 }
 

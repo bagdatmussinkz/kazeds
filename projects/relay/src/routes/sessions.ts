@@ -2,6 +2,19 @@ import type { FastifyInstance } from "fastify";
 import type { SessionStore } from "../services/session-store";
 import { createSessionSchema, completeSessionSchema } from "../schemas/session.schema";
 
+// Relay self-tracing: пишет lifecycle-события сессии в traceStore (если он
+// зарегистрирован). Полные payloads включаются — буфер только в памяти.
+function trace(app: FastifyInstance, session_id: string | undefined, msg: string, data?: unknown) {
+  (app as any).traceStore?.add({
+    session_id,
+    source: "relay",
+    level: "info",
+    msg,
+    data,
+    ts: new Date().toISOString(),
+  });
+}
+
 // Extend Fastify with session store
 declare module "fastify" {
   interface FastifyInstance {
@@ -18,6 +31,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     }
 
     const result = app.sessionStore.create(parsed.data);
+    trace(app, result.session_id, "session created", { request: parsed.data, response: result });
     return reply.status(201).send(result);
   });
 
@@ -32,6 +46,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
     // Mark as scanned
     app.sessionStore.markScanned(id);
+    trace(app, id, "payload fetched (scanned)", { payload });
 
     return reply.send(payload);
   });
@@ -58,6 +73,10 @@ export async function sessionRoutes(app: FastifyInstance) {
     }
 
     const result = app.sessionStore.complete(id, parsed.data);
+    trace(app, id, result.success ? "session completed" : "complete rejected", {
+      result: parsed.data,
+      outcome: result,
+    });
 
     if (!result.success) {
       return reply.status(result.statusCode || 500).send({ error: result.error });
@@ -70,6 +89,7 @@ export async function sessionRoutes(app: FastifyInstance) {
   app.delete("/sessions/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const result = app.sessionStore.cancel(id);
+    trace(app, id, "session cancelled", { outcome: result });
 
     if (!result.success) {
       return reply.status(result.statusCode || 500).send({ error: result.error });

@@ -1,8 +1,9 @@
 // Signing flow manager
 // Creates relay session, shows QR overlay on the requesting tab, polls for result
 
-import { createSession, pollSession, cancelSession, buildDeepLink, POLL_INTERVAL_MS, MAX_POLLS } from "../lib/relay-client.js";
+import { createSession, pollSession, cancelSession, buildDeepLink, RELAY_URL, POLL_INTERVAL_MS, MAX_POLLS } from "../lib/relay-client.js";
 import { generateQRDataURL } from "../lib/qr-generate.js";
+import { trace, isTraceEnabled } from "../lib/trace.js";
 
 const pendingFlows = new Map();
 
@@ -22,6 +23,7 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
   try {
     session = await createSession(origin, operation, data, format);
   } catch (err) {
+    trace(undefined, "error", "createSession failed", { origin, operation, format, error: err.message });
     throw new Error("Failed to create signing session: " + err.message);
   }
 
@@ -30,6 +32,7 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
   const qrImageUrl = generateQRDataURL(deepLink, 280);
 
   console.debug("[KazEDS] Session created:", sessionId, "deep link:", deepLink.slice(0, 100));
+  trace(sessionId, "info", "session created", { origin, operation, format, session, deepLink });
 
   // Show QR overlay on requesting tab
   if (senderInfo.tabId != null) {
@@ -47,6 +50,8 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
         operation,
         domain: senderInfo.domain,
         expiresAt: session.expires_at,
+        traceEnabled: isTraceEnabled(),
+        traceUrl: `${RELAY_URL}/trace?session_id=${sessionId}&limit=200`,
       });
     } catch (err) {
       console.warn("[KazEDS] Failed to show QR overlay:", err.message);
@@ -78,6 +83,7 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
 
       if (status.status === "completed" && status.result) {
         hideQR(senderInfo.tabId, sessionId);
+        trace(sessionId, "info", "signing completed", { result: status.result });
         return status.result;
       }
 
@@ -88,6 +94,7 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
 
       if (status.status === "expired") {
         hideQR(senderInfo.tabId, sessionId);
+        trace(sessionId, "warn", "session expired during polling", { poll: i });
         throw new Error("Signing session expired");
       }
 
@@ -97,18 +104,22 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
       }
 
       // Update overlay status (scanned)
-      if (status.status === "scanned" && senderInfo.tabId != null) {
+      // Push status + authoritative expires_in to the overlay every poll,
+      // so the countdown stays in sync with the relay's clock.
+      if (senderInfo.tabId != null) {
         try {
           chrome.tabs.sendMessage(senderInfo.tabId, {
             type: "kazeds-qr-status",
             sessionId,
-            status: "scanned",
+            status: status.status,
+            expiresIn: status.expires_in,
           });
         } catch {}
       }
     }
 
     hideQR(senderInfo.tabId, sessionId);
+    trace(sessionId, "warn", "polling timed out (MAX_POLLS reached)", { maxPolls: MAX_POLLS });
     throw new Error("Signing session timed out");
   } finally {
     pendingFlows.delete(sessionId);
@@ -121,6 +132,7 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
 export function cancelFlow(sessionId) {
   const flow = pendingFlows.get(sessionId);
   if (flow) {
+    trace(sessionId, "info", "flow cancelled by user/overlay");
     flow.abortController.abort();
     cancelSession(sessionId);
     hideQR(flow.tabId, sessionId);

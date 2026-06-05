@@ -48,14 +48,15 @@ Cloud Relay (Fastify API)
 
 ## Сервисы
 
-| Сервис | Домен | Порт | Описание |
-|--------|-------|------|----------|
-| **Demo Site** | `demo-sign.aitu.uz` | 3000 | Тестовый сайт с кнопкой "Войти по ЭЦП" |
-| **Web App** | `app-sign.aitu.uz` | 5173 | PWA — сканер QR, ключи, подписание |
-| **Cloud Relay** | `relay-sign.aitu.uz` | 3001 | REST API — сессии, поллинг, результаты |
-| **Widget CDN** | `extension-sign.aitu.uz` | 80 (nginx) | JS-виджет — одна строка заменяет Extension |
-| **Landing** | `sign.aitu.uz` | 80 (nginx) | Лендинг с инструкциями и WiFi QR |
-| **Nginx** | — | 80 | Reverse proxy для всех доменов |
+| Сервис | URL | Порт upstream | Описание |
+|--------|-----|---------------|----------|
+| **Landing** | `sign.aitu.uz/` | 80 (nginx, статика) | Лендинг с инструкциями и WiFi QR |
+| **Web App** | `sign.aitu.uz/app/` | 5173 (Next.js, basePath=/app) | PWA — сканер QR, ключи, подписание |
+| **Cloud Relay** | `sign.aitu.uz/relay/` | 3001 (Node.js Fastify) | REST API — сессии, поллинг, результаты |
+| **Java Verifier** | `sign.aitu.uz/relay/verify/` | 8082 (Java + BouncyCastle) | Верификация GOST/CMS/XMLDSig подписей |
+| **Widget CDN** | `sign.aitu.uz/ext/` | 80 (nginx, статика) | JS-виджет + ZIP расширения |
+| **Demo Site** | `demo.aitu.uz` | 3000 | Отдельный тестовый сайт с кнопкой "Войти по ЭЦП" |
+| **Nginx** | — | 80 | Reverse proxy: один vhost на всё, плюс отдельный для `demo.aitu.uz` |
 
 ## Быстрый старт
 
@@ -67,7 +68,7 @@ Cloud Relay (Fastify API)
 ### 2. Прописать домены в `/etc/hosts`
 
 ```bash
-echo '127.0.0.1 sign.aitu.uz demo-sign.aitu.uz app-sign.aitu.uz relay-sign.aitu.uz extension-sign.aitu.uz' | sudo tee -a /etc/hosts
+echo '127.0.0.1 sign.aitu.uz demo.aitu.uz' | sudo tee -a /etc/hosts
 ```
 
 ### 3. Установить зависимости и собрать
@@ -106,16 +107,16 @@ docker run -d --name kazeds-nginx --rm \
 
 ```bash
 # Все сервисы
-curl -s http://demo-sign.aitu.uz/          # Demo Site
-curl -s http://app-sign.aitu.uz/           # Web App
-curl -s http://relay-sign.aitu.uz/health   # Relay health check
-curl -s http://sign.aitu.uz/               # Landing
-curl -s http://extension-sign.aitu.uz/eds.js | head -3            # Widget CDN
+curl -s http://sign.aitu.uz/                       # Landing
+curl -s http://sign.aitu.uz/app/                   # Web App (PWA)
+curl -s http://sign.aitu.uz/relay/health           # Relay health check
+curl -s http://sign.aitu.uz/ext/eds.js | head -3   # Widget CDN
+curl -s http://demo.aitu.uz/                       # Demo Site (отдельный хост)
 ```
 
 ### 6. Открыть в браузере
 
-Перейдите на **http://demo-sign.aitu.uz** и нажмите **"Войти по ЭЦП"**.
+Перейдите на **http://demo.aitu.uz** и нажмите **"Войти по ЭЦП"**.
 
 Появится QR-оверлей с обратным отсчётом.
 
@@ -174,7 +175,7 @@ SIG=$(./scripts/sign.sh "demo" | python3 -c "import sys,json; print(json.load(sy
 Одна строка в `<head>`:
 
 ```html
-<script src="http://extension-sign.aitu.uz/eds.js"></script>
+<script src="https://sign.aitu.uz/ext/eds.js"></script>
 ```
 
 Виджет автоматически:
@@ -189,18 +190,45 @@ SIG=$(./scripts/sign.sh "demo" | python3 -c "import sys,json; print(json.load(sy
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| `POST` | `/v1/sessions` | Создать сессию |
+| `POST` | `/v1/sessions` | Создать сессию (TTL 2 минуты) |
+| `GET` | `/v1/sessions/:id/payload` | Полные данные сессии (вызывает PWA после скана) |
 | `GET` | `/v1/sessions/:id/status` | Получить статус (polling) |
 | `POST` | `/v1/sessions/:id/complete` | Завершить с подписью |
 | `DELETE` | `/v1/sessions/:id` | Отменить сессию |
+| `POST` | `/v1/trace` | Приём trace-событий (см. Трейсинг) |
+| `GET` | `/v1/trace` | Чтение trace-буфера (`?session_id=&source=&limit=`) |
+| `DELETE` | `/v1/trace` | Очистить trace-буфер |
 | `GET` | `/health` | Health check |
+
+## Трейсинг (распределённая отладка)
+
+Все компоненты могут слать trace-события (с полными payload) в Relay.
+По умолчанию выключено; включается на стороне клиента:
+
+| Компонент | Как включить |
+|-----------|--------------|
+| Web App (PWA) | `localStorage.kazeds_trace = "1"` или `trace=true` в URL |
+| Extension (service worker) | `chrome.storage.local.set({ kazeds_trace: true })` |
+| Relay (lifecycle сессий) | всегда пишет в буфер (in-memory) |
+
+Чтение собранного трейса по сессии:
+
+```bash
+curl "https://sign.aitu.uz/relay/v1/trace?session_id=<UUID>" | jq
+# или всё подряд
+curl "https://sign.aitu.uz/relay/v1/trace?limit=100" | jq
+# очистить
+curl -X DELETE https://sign.aitu.uz/relay/v1/trace
+```
+
+Буфер кольцевой (2000 событий), только в памяти — не журнал аудита.
 
 ### Создание сессии
 
 ```bash
-curl -X POST http://relay-sign.aitu.uz/v1/sessions \
+curl -X POST https://sign.aitu.uz/relay/v1/sessions \
   -H "Content-Type: application/json" \
-  -d '{"origin":"http://demo-sign.aitu.uz","operation":"auth"}'
+  -d '{"origin":"https://demo.aitu.uz","operation":"auth"}'
 ```
 
 Ответ:
@@ -212,9 +240,9 @@ curl -X POST http://relay-sign.aitu.uz/v1/sessions \
     "version": 1,
     "session_id": "uuid",
     "challenge": "base64",
-    "origin": "http://demo-sign.aitu.uz",
+    "origin": "https://demo.aitu.uz",
     "operation": "auth",
-    "callback_url": "http://relay-sign.aitu.uz/v1/sessions/uuid/complete",
+    "callback_url": "https://sign.aitu.uz/relay/v1/sessions/uuid/complete",
     "expires_at": "2026-03-31T12:00:00.000Z"
   },
   "expires_at": "2026-03-31T12:00:00.000Z"

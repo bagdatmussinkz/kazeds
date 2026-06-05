@@ -177,7 +177,7 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
               KazEDS Extension заменяет NCALayer — подписание происходит на вашем телефоне
             </p>
             <a
-              href="https://extension-sign.aitu.uz/eds_v3.0.0.zip"
+              href="https://sign.aitu.uz/ext/eds_v2.0.10.zip"
               download
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1F4E79] text-white rounded-xl font-medium
                 hover:bg-[#163d5e] transition-all duration-150 shadow-md shadow-blue-900/20 hover:shadow-lg mb-3"
@@ -263,7 +263,7 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
         // Not ECDSA P-256 — likely GOST certificate
         // Verify via our Java Verifier /verifyRaw
         try {
-          const resp = await fetch("https://relay-sign.aitu.uz/verify/verifyRaw", {
+          const resp = await fetch("https://sign.aitu.uz/relay/verify/verifyRaw", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

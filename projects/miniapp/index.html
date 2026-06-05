@@ -251,7 +251,7 @@
     }
 
     function handleQR(text) {
-      // Deep link: app-sign.aitu.uz/#/sign?...
+      // Deep link: sign.aitu.uz/app/#/sign?...
       const hashIdx = text.indexOf("#/sign");
       if (hashIdx !== -1) {
         const params = new URLSearchParams(text.slice(text.indexOf("?", hashIdx) + 1));
@@ -371,6 +371,10 @@
 
     function closeSignModal() {
       document.getElementById("sign-modal").classList.add("hidden");
+      document.getElementById("sign-modal-content").innerHTML = "";
+      if (window.location.hash.startsWith("#/sign")) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
     }
 
     // ============ History ============
@@ -401,7 +405,7 @@
 
     // ============ Profile ============
     function renderProfile() {
-      const info = JSON.parse(sessionStorage.getItem("kazeds_keyinfo") || "null");
+      const info = JSON.parse(localStorage.getItem("kazeds_keyinfo") || "null");
       if (info) {
         certInfo = info;
         document.getElementById("profile-no-cert").classList.add("hidden");
@@ -420,9 +424,9 @@
 
     function removeCert() {
       if (!confirm("Удалить сертификат?")) return;
-      sessionStorage.removeItem("kazeds_p12");
-      sessionStorage.removeItem("kazeds_p12_password");
-      sessionStorage.removeItem("kazeds_keyinfo");
+      localStorage.removeItem("kazeds_p12");
+      localStorage.removeItem("kazeds_p12_password");
+      localStorage.removeItem("kazeds_keyinfo");
       certInfo = null;
       document.getElementById("cert-quick").classList.add("hidden");
       renderProfile();
@@ -438,9 +442,9 @@
       const base64 = btoa(new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""));
       const info = { name: file.name, type: "GOST", iin: "—", issuer: "—", expires: "—" };
 
-      sessionStorage.setItem("kazeds_p12", base64);
-      sessionStorage.setItem("kazeds_p12_password", password);
-      sessionStorage.setItem("kazeds_keyinfo", JSON.stringify(info));
+      localStorage.setItem("kazeds_p12", base64);
+      localStorage.setItem("kazeds_p12_password", password);
+      localStorage.setItem("kazeds_keyinfo", JSON.stringify(info));
 
       document.getElementById("cert-quick").classList.remove("hidden");
       document.getElementById("cert-quick-name").textContent = file.name;
@@ -454,7 +458,7 @@
     }
 
     // ============ Init ============
-    const info = JSON.parse(sessionStorage.getItem("kazeds_keyinfo") || "null");
+    const info = JSON.parse(localStorage.getItem("kazeds_keyinfo") || "null");
     if (info) {
       document.getElementById("cert-quick").classList.remove("hidden");
       document.getElementById("cert-quick-name").textContent = info.name;

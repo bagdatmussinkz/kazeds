@@ -10,6 +10,8 @@
   let shadow = null;
   let currentSessionId = null;
   let progressTimer = null;
+  let deadlineAt = 0;
+  let overlayTotalMs = 1;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.type === "kazeds-show-qr") {
@@ -25,6 +27,7 @@
     }
     if (message.type === "kazeds-qr-status" && message.sessionId === currentSessionId) {
       updateStatus(message.status);
+      if (typeof message.expiresIn === "number") syncCountdown(message.expiresIn);
       sendResponse({ ok: true });
       return true;
     }
@@ -36,9 +39,11 @@
 
     overlayHost = document.createElement("div");
     overlayHost.id = "__kazeds_qr_overlay__";
+    if (data.sessionId) overlayHost.dataset.sessionId = data.sessionId;
+    if (data.deepLink) overlayHost.dataset.deepLink = data.deepLink;
     shadow = overlayHost.attachShadow({ mode: "closed" });
 
-    const expiresMs = data.expiresAt ? new Date(data.expiresAt).getTime() - Date.now() : 300000;
+    const expiresMs = data.expiresAt ? new Date(data.expiresAt).getTime() - Date.now() : 120000;
     const totalMs = Math.max(expiresMs, 10000);
     const isAuth = data.operation === "auth";
     const badgeClass = isAuth ? "qr-badge-auth" : "qr-badge-sign";
@@ -62,7 +67,15 @@
             <span>Ожидание сканирования...</span>
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
-          <div class="qr-branding">KazEDS v2.0.3</div>
+          <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
+            <span>KazEDS v2.0.10</span>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
+              <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
+              trace
+            </label>
+            <a id="kazeds-trace-link" href="${escapeHtml(data.traceUrl || "#")}" target="_blank" rel="noopener"
+               style="font-size:11px;color:#3b82f6;text-decoration:underline">лог</a>
+          </div>
         </div>
       </div>
     `;
@@ -74,6 +87,14 @@
       chrome.runtime.sendMessage({ type: "kazeds-cancel-flow", sessionId: currentSessionId });
       removeOverlay();
     });
+
+    // Trace toggle → service worker → chrome.storage (info-level events on/off)
+    const traceToggle = shadow.getElementById("kazeds-trace-toggle");
+    if (traceToggle) {
+      traceToggle.addEventListener("change", () => {
+        chrome.runtime.sendMessage({ type: "kazeds-set-trace", enabled: traceToggle.checked });
+      });
+    }
 
     shadow.querySelector(".overlay-backdrop").addEventListener("click", (e) => {
       if (e.target === e.currentTarget) {
@@ -88,21 +109,38 @@
       if (backdrop) backdrop.classList.add("visible");
     });
 
-    // Countdown timer
-    const startTime = Date.now();
+    // Countdown timer — deadline-based so background-tab throttling can't drift it.
+    // deadlineAt is resynced from the server's expires_in on every status poll.
+    deadlineAt = Date.now() + totalMs;
+    overlayTotalMs = totalMs;
     const bar = shadow.getElementById("kazeds-bar");
     const countdown = shadow.getElementById("kazeds-countdown");
 
     progressTimer = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, totalMs - elapsed);
-      if (bar) bar.style.width = Math.max(0, (1 - elapsed / totalMs) * 100) + "%";
+      const remaining = Math.max(0, deadlineAt - Date.now());
+      if (bar) bar.style.width = Math.max(0, (remaining / overlayTotalMs) * 100) + "%";
       if (countdown) countdown.textContent = String(Math.ceil(remaining / 1000));
       if (remaining <= 0) {
         clearInterval(progressTimer);
         progressTimer = null;
+        showExpired();
       }
     }, 1000);
+  }
+
+  // Resync local deadline with the relay's authoritative expires_in (seconds)
+  function syncCountdown(expiresInSec) {
+    deadlineAt = Date.now() + expiresInSec * 1000;
+  }
+
+  function showExpired() {
+    if (!shadow) return;
+    const statusEl = shadow.getElementById("kazeds-status");
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="qr-status-expired" style="color:#dc2626;font-weight:600">Время истекло</span>`;
+    }
+    chrome.runtime.sendMessage({ type: "kazeds-cancel-flow", sessionId: currentSessionId });
+    setTimeout(() => removeOverlay(), 2000);
   }
 
   function updateStatus(status) {

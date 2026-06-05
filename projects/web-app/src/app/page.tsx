@@ -28,7 +28,7 @@ type VerifyState = "idle" | "verifying" | "valid" | "invalid";
 
 // --- Helpers ---
 
-const RELAY_BASE = "https://relay-sign.aitu.uz/v1";
+const RELAY_BASE = "https://sign.aitu.uz/relay/v1";
 
 function parseHash(): Route {
   if (typeof window === "undefined") return { page: "home" };
@@ -141,10 +141,10 @@ function HomePage() {
   const viewfinderRef = useRef<HTMLDivElement>(null);
   const keyFileRef = useRef<HTMLInputElement>(null);
 
-  // Check if p12 is stored in sessionStorage
+  // Check if p12 is stored in localStorage (persists across PWA restarts)
   useEffect(() => {
-    const stored = sessionStorage.getItem("kazeds_p12");
-    const info = sessionStorage.getItem("kazeds_keyinfo");
+    const stored = localStorage.getItem("kazeds_p12");
+    const info = localStorage.getItem("kazeds_keyinfo");
     if (stored && info) {
       setP12Stored(true);
       try { setKeyInfo(JSON.parse(info)); } catch {}
@@ -172,9 +172,9 @@ function HomePage() {
         console.warn("[KazEDS] WASM not available, storing p12 without validation");
       }
 
-      sessionStorage.setItem("kazeds_p12", base64);
-      sessionStorage.setItem("kazeds_p12_password", password);
-      sessionStorage.setItem("kazeds_keyinfo", JSON.stringify(info));
+      localStorage.setItem("kazeds_p12", base64);
+      localStorage.setItem("kazeds_p12_password", password);
+      localStorage.setItem("kazeds_keyinfo", JSON.stringify(info));
       setKeyInfo(info);
       setP12Stored(true);
       setError(null);
@@ -184,9 +184,9 @@ function HomePage() {
   };
 
   const handleKeyRemove = () => {
-    sessionStorage.removeItem("kazeds_p12");
-    sessionStorage.removeItem("kazeds_p12_password");
-    sessionStorage.removeItem("kazeds_keyinfo");
+    localStorage.removeItem("kazeds_p12");
+    localStorage.removeItem("kazeds_p12_password");
+    localStorage.removeItem("kazeds_keyinfo");
     setKeyInfo(null);
     setP12Stored(false);
   };
@@ -243,7 +243,7 @@ function HomePage() {
 
   const handleQRResult = (text: string) => {
     // Extract hash from deep link URL
-    // Expected: https://app-sign.aitu.uz/#/sign?session=...
+    // Expected: https://sign.aitu.uz/app/#/sign?session=...
     try {
       const hashIndex = text.indexOf("#/sign");
       if (hashIndex !== -1) {
@@ -368,7 +368,7 @@ function HomePage() {
           </button>
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.4 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.9 — Мобильная ЭЦП</p>
       </div>
     </main>
   );
@@ -387,14 +387,54 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const [verifyInfo, setVerifyInfo] = useState<{ algorithm: string; curve: string; bits: number } | null>(null);
   const [traceLog, setTraceLog] = useState<TraceEvent[]>([]);
   const [traceOpen, setTraceOpen] = useState(false);
+  const [remoteTraceOn, setRemoteTraceOn] = useState(false);
   const traceStartRef = useRef<number>(Date.now());
+
+  // Reflect persisted remote-trace flag (localStorage) in the toggle
+  useEffect(() => {
+    try {
+      setRemoteTraceOn(localStorage.getItem("kazeds_trace") === "1");
+    } catch {}
+  }, []);
 
   const addTrace = useCallback((level: TraceEvent["level"], msg: string, data?: unknown) => {
     const ev: TraceEvent = { ts: Date.now() - traceStartRef.current, level, msg, data };
     setTraceLog((prev) => [...prev, ev]);
     const log = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
     log("[KazEDS trace]", `+${ev.ts}ms`, msg, data ?? "");
-  }, []);
+    // Remote tracing: ship event (with full payload) to the relay when enabled
+    // via localStorage kazeds_trace=1 or trace=true in the URL/hash.
+    // Errors are ALWAYS shipped so failures in the field are captured.
+    try {
+      const remoteOn =
+        level === "error" ||
+        localStorage.getItem("kazeds_trace") === "1" ||
+        window.location.href.includes("trace=true");
+      if (remoteOn) {
+        fetch(`${RELAY_BASE}/trace`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: initialParams.session,
+            source: "web-app",
+            level,
+            msg,
+            data,
+            ts: new Date().toISOString(),
+          }),
+        }).catch(() => {});
+      }
+    } catch {}
+  }, [initialParams.session]);
+
+  // Reset signing state when entering a new session (fresh QR scan after a previous success)
+  useEffect(() => {
+    setState({ status: "idle" });
+    setVerifyState("idle");
+    setVerifyInfo(null);
+    setTraceLog([]);
+    traceStartRef.current = Date.now();
+  }, [initialParams.session]);
 
   // Fetch full session data from relay when using short QR URL
   useEffect(() => {
@@ -454,17 +494,17 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const [p12FileName, setP12FileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-detect method: if p12 in sessionStorage → GOST, else ECDSA
-  const storedP12 = typeof window !== "undefined" ? sessionStorage.getItem("kazeds_p12") : null;
-  const storedPassword = typeof window !== "undefined" ? sessionStorage.getItem("kazeds_p12_password") : null;
+  // Auto-detect method: if p12 in localStorage → GOST, else ECDSA
+  const storedP12 = typeof window !== "undefined" ? localStorage.getItem("kazeds_p12") : null;
+  const storedPassword = typeof window !== "undefined" ? localStorage.getItem("kazeds_p12_password") : null;
   const [method, setMethod] = useState<SignMethod>(storedP12 ? "GOST" : "ECDSA");
 
-  // Pre-fill from sessionStorage
+  // Pre-fill from localStorage
   useEffect(() => {
     if (storedP12 && storedPassword) {
       setP12File(storedP12);
       setP12Password(storedPassword);
-      const info = sessionStorage.getItem("kazeds_keyinfo");
+      const info = localStorage.getItem("kazeds_keyinfo");
       if (info) {
         try { setP12FileName(JSON.parse(info).name); } catch {}
       }
@@ -477,13 +517,29 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const password = prompt("Введите пароль от ЭЦП:");
+    if (!password) {
+      e.target.value = "";
+      return;
+    }
     setP12FileName(file.name);
+    setP12Password(password);
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = btoa(
         new Uint8Array(reader.result as ArrayBuffer).reduce((s, b) => s + String.fromCharCode(b), "")
       );
       setP12File(base64);
+      try {
+        localStorage.setItem("kazeds_p12", base64);
+        localStorage.setItem("kazeds_p12_password", password);
+        localStorage.setItem(
+          "kazeds_keyinfo",
+          JSON.stringify({ name: file.name, type: "GOST", expires: "N/A" }),
+        );
+      } catch {
+        // ignore quota / disabled storage
+      }
     };
     reader.readAsArrayBuffer(file);
   };
@@ -513,12 +569,19 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           addTrace("info", "raw GOST sign done", { sigLen: rawResult.signature.length, certLen: rawResult.certificate.length });
           result = { ...rawResult, signature: signedXml };
         } else {
-          const { signCMSWithGOST, signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
-          addTrace("info", "signCMSWithGOST call");
-          const cmsB64 = await signCMSWithGOST(p12File, p12Password, dataToSign, false);
-          addTrace("info", "signCMSWithGOST done", { cmsLen: cmsB64.length });
+          const { signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
+          addTrace("info", "signWithGOST call (CMS + CAdES-T attempt)");
+          // signWithGOST internally builds CMS and tries to upgrade it to CAdES-T
+          // via the TSA proxy; cmsSignature carries the timestamped version when
+          // the TSA was reachable, plain CAdES-BES otherwise.
           const rawResult = await signRawGOST(p12File, p12Password, dataToSign);
-          addTrace("info", "raw GOST sign done", { sigLen: rawResult.signature.length });
+          addTrace("info", "GOST sign done", {
+            sigLen: rawResult.signature.length,
+            cmsLen: rawResult.cmsSignature?.length || 0,
+            hasCades: !!rawResult.cmsSignature,
+          });
+          const cmsB64 = rawResult.cmsSignature
+            || (await (await import("@/lib/crypto/signer")).signCMSWithGOST(p12File, p12Password, dataToSign, false));
           result = { ...rawResult, signature: cmsB64, cmsSignature: cmsB64 };
         }
       } else {
@@ -558,7 +621,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const buildDebugReport = useCallback((): string => {
     const errInfo = state.status === "error" ? { friendly: state.message, raw: state.rawError, stack: state.stack } : null;
     const report = {
-      version: "2.0.4",
+      version: "2.0.9",
       time: new Date().toISOString(),
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "n/a",
       session: params.session,
@@ -631,6 +694,30 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           <div>
             <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">ID сессии</label>
             <p className="text-xs text-slate-400 mt-1 font-mono break-all">{params.session}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={remoteTraceOn}
+                  onChange={(e) => {
+                    setRemoteTraceOn(e.target.checked);
+                    try {
+                      if (e.target.checked) localStorage.setItem("kazeds_trace", "1");
+                      else localStorage.removeItem("kazeds_trace");
+                    } catch {}
+                  }}
+                />
+                trace
+              </label>
+              <a
+                href={`${RELAY_BASE}/trace?session_id=${params.session}&limit=200`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-500 underline"
+              >
+                Трейс-лог сессии ↗
+              </a>
+            </div>
           </div>
           <div className="border-t border-slate-100" />
 
@@ -710,12 +797,17 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
                 </svg>
               </div>
               <p className="text-emerald-700 font-semibold">Подписано успешно</p>
-              <button onClick={handleVerify}
-                disabled={verifyState === "verifying"}
-                className="px-6 py-2 bg-[#1F4E79] text-white text-sm font-medium rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
-                {verifyState === "verifying" ? "Проверка..." : "Проверить подпись"}
-              </button>
-              <p className="text-slate-400 text-xs">Можно закрыть страницу</p>
+              <div className="flex gap-2">
+                <button onClick={handleVerify}
+                  disabled={verifyState === "verifying"}
+                  className="px-5 py-2 bg-[#1F4E79] text-white text-sm font-medium rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
+                  {verifyState === "verifying" ? "Проверка..." : "Проверить"}
+                </button>
+                <button onClick={() => { window.location.hash = ""; }}
+                  className="px-5 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-200 active:scale-[0.98] transition-all">
+                  Готово
+                </button>
+              </div>
             </div>
           )}
 
@@ -810,7 +902,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           )}
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.4 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.9 — Мобильная ЭЦП</p>
       </div>
     </main>
   );

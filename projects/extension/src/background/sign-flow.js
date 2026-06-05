@@ -1,9 +1,9 @@
 // Signing flow manager
 // Creates relay session, shows QR overlay on the requesting tab, polls for result
 
-import { createSession, pollSession, cancelSession, buildDeepLink, POLL_INTERVAL_MS, MAX_POLLS } from "../lib/relay-client.js";
+import { createSession, pollSession, cancelSession, buildDeepLink, RELAY_URL, POLL_INTERVAL_MS, MAX_POLLS } from "../lib/relay-client.js";
 import { generateQRDataURL } from "../lib/qr-generate.js";
-import { trace } from "../lib/trace.js";
+import { trace, isTraceEnabled } from "../lib/trace.js";
 
 const pendingFlows = new Map();
 
@@ -50,6 +50,8 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
         operation,
         domain: senderInfo.domain,
         expiresAt: session.expires_at,
+        traceEnabled: isTraceEnabled(),
+        traceUrl: `${RELAY_URL}/trace?session_id=${sessionId}&limit=200`,
       });
     } catch (err) {
       console.warn("[KazEDS] Failed to show QR overlay:", err.message);

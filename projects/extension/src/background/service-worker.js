@@ -30,6 +30,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // async sendResponse
   }
 
+  // Trace toggle from the QR overlay
+  if (message.type === "kazeds-set-trace") {
+    chrome.storage.local.set({ kazeds_trace: !!message.enabled });
+    sendResponse({ ok: true });
+    return true;
+  }
+
   return false;
 });
 

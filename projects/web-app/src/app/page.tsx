@@ -368,7 +368,7 @@ function HomePage() {
           </button>
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.8 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.9 — Мобильная ЭЦП</p>
       </div>
     </main>
   );
@@ -387,7 +387,15 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const [verifyInfo, setVerifyInfo] = useState<{ algorithm: string; curve: string; bits: number } | null>(null);
   const [traceLog, setTraceLog] = useState<TraceEvent[]>([]);
   const [traceOpen, setTraceOpen] = useState(false);
+  const [remoteTraceOn, setRemoteTraceOn] = useState(false);
   const traceStartRef = useRef<number>(Date.now());
+
+  // Reflect persisted remote-trace flag (localStorage) in the toggle
+  useEffect(() => {
+    try {
+      setRemoteTraceOn(localStorage.getItem("kazeds_trace") === "1");
+    } catch {}
+  }, []);
 
   const addTrace = useCallback((level: TraceEvent["level"], msg: string, data?: unknown) => {
     const ev: TraceEvent = { ts: Date.now() - traceStartRef.current, level, msg, data };
@@ -613,7 +621,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const buildDebugReport = useCallback((): string => {
     const errInfo = state.status === "error" ? { friendly: state.message, raw: state.rawError, stack: state.stack } : null;
     const report = {
-      version: "2.0.8",
+      version: "2.0.9",
       time: new Date().toISOString(),
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "n/a",
       session: params.session,
@@ -686,6 +694,30 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           <div>
             <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">ID сессии</label>
             <p className="text-xs text-slate-400 mt-1 font-mono break-all">{params.session}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={remoteTraceOn}
+                  onChange={(e) => {
+                    setRemoteTraceOn(e.target.checked);
+                    try {
+                      if (e.target.checked) localStorage.setItem("kazeds_trace", "1");
+                      else localStorage.removeItem("kazeds_trace");
+                    } catch {}
+                  }}
+                />
+                trace
+              </label>
+              <a
+                href={`${RELAY_BASE}/trace?session_id=${params.session}&limit=200`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-500 underline"
+              >
+                Трейс-лог сессии ↗
+              </a>
+            </div>
           </div>
           <div className="border-t border-slate-100" />
 
@@ -870,7 +902,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           )}
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.8 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.9 — Мобильная ЭЦП</p>
       </div>
     </main>
   );

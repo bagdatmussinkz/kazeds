@@ -4,6 +4,7 @@
 
 import { executeSignFlow } from "./sign-flow.js";
 import { trace } from "../lib/trace.js";
+import { parseCertificate } from "../lib/x509.js";
 
 // --- Module registry ---
 const modules = new Map();
@@ -62,7 +63,19 @@ const commonUtils = {
   async getKeyInfo(_args, senderInfo) {
     try {
       const result = await executeSignFlow(senderInfo, "auth", undefined, undefined);
-      return successCommon(result);
+      // Real NCALayer returns parsed certificate fields (subjectDn, certNotAfter,
+      // pem, ...) — sites do `.split()` on them and crash if absent (kazpatent).
+      try {
+        const info = parseCertificate(result.certificate);
+        return successCommon({ ...info, certificate: result.certificate });
+      } catch (parseErr) {
+        // ECDSA demo mode returns a bare SPKI key, not an X.509 cert — keep old shape
+        trace(undefined, "warn", "getKeyInfo: certificate parse failed, returning raw result", {
+          domain: senderInfo?.domain,
+          error: parseErr.message,
+        });
+        return successCommon(result);
+      }
     } catch (e) {
       return catchCommon(e);
     }

@@ -67,7 +67,7 @@
             <span>Ожидание сканирования...</span>
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
-          <div class="qr-branding">KazEDS v2.0.8</div>
+          <div class="qr-branding">KazEDS v2.0.9</div>
         </div>
       </div>
     `;

@@ -86,7 +86,8 @@ Vitest is configured at the repo root (`vitest.config.ts`, `globals: true`). Tes
 
 ## Key design decisions
 
-- **Relay is stateless and in-memory.** Sessions live in `Map<UUID, Session>` with a 5-minute TTL and periodic cleanup. Intentional MVP constraint — no database, no Redis. Scaling beyond one Relay process requires picking a backing store first.
+- **Relay is stateless and in-memory.** Sessions live in `Map<UUID, Session>` with a 2-minute TTL (`SESSION_TTL_SECONDS`) and periodic cleanup; both `pending` and `scanned` sessions expire. Intentional MVP constraint — no database, no Redis. Scaling beyond one Relay process requires picking a backing store first.
+- **Distributed tracing is opt-in.** All components can POST trace events (full payloads) to `/v1/trace` on the relay (in-memory ring buffer, 2000 events). Web App enables via `localStorage.kazeds_trace="1"` or `trace=true` in URL; extension via `chrome.storage.local {kazeds_trace: true}`; relay always self-traces session lifecycle. Read back with `GET /v1/trace?session_id=`.
 - **Extension knows nothing about crypto.** It only relays QR payloads and signature results and emulates the NCALayer JSON-RPC 2.0 surface (`basicsAuthenticate`, `createCMSSignature*`, `getKeys`, `signPlainData`, `signXml(s)`, `browseKeyStore`, …). All cryptographic work happens in the Web App.
 - **Session state machine:** `pending` → `scanned` → `completed` | `rejected` | `expired`.
 - **GOST is the legally significant path; ECDSA is demo only.** Don't add ECDSA fallbacks to GOST-mandated flows — eGov / damubala / etc. will reject anything that isn't GOST + a НУЦ РК certificate.

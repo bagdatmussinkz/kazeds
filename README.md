@@ -190,11 +190,38 @@ SIG=$(./scripts/sign.sh "demo" | python3 -c "import sys,json; print(json.load(sy
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| `POST` | `/v1/sessions` | Создать сессию |
+| `POST` | `/v1/sessions` | Создать сессию (TTL 2 минуты) |
+| `GET` | `/v1/sessions/:id/payload` | Полные данные сессии (вызывает PWA после скана) |
 | `GET` | `/v1/sessions/:id/status` | Получить статус (polling) |
 | `POST` | `/v1/sessions/:id/complete` | Завершить с подписью |
 | `DELETE` | `/v1/sessions/:id` | Отменить сессию |
+| `POST` | `/v1/trace` | Приём trace-событий (см. Трейсинг) |
+| `GET` | `/v1/trace` | Чтение trace-буфера (`?session_id=&source=&limit=`) |
+| `DELETE` | `/v1/trace` | Очистить trace-буфер |
 | `GET` | `/health` | Health check |
+
+## Трейсинг (распределённая отладка)
+
+Все компоненты могут слать trace-события (с полными payload) в Relay.
+По умолчанию выключено; включается на стороне клиента:
+
+| Компонент | Как включить |
+|-----------|--------------|
+| Web App (PWA) | `localStorage.kazeds_trace = "1"` или `trace=true` в URL |
+| Extension (service worker) | `chrome.storage.local.set({ kazeds_trace: true })` |
+| Relay (lifecycle сессий) | всегда пишет в буфер (in-memory) |
+
+Чтение собранного трейса по сессии:
+
+```bash
+curl "https://sign.aitu.uz/relay/v1/trace?session_id=<UUID>" | jq
+# или всё подряд
+curl "https://sign.aitu.uz/relay/v1/trace?limit=100" | jq
+# очистить
+curl -X DELETE https://sign.aitu.uz/relay/v1/trace
+```
+
+Буфер кольцевой (2000 событий), только в памяти — не журнал аудита.
 
 ### Создание сессии
 

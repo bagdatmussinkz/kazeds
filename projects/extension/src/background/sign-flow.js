@@ -34,15 +34,23 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
   console.debug("[KazEDS] Session created:", sessionId, "deep link:", deepLink.slice(0, 100));
   trace(sessionId, "info", "session created", { origin, operation, format, session, deepLink });
 
-  // Parallel eGov Mobile session (sign operations only — egovQR has no auth flow).
-  // Best-effort: if the egov session fails, the KazEDS QR still works alone.
+  // Parallel eGov Mobile session. Best-effort: if the egov session fails,
+  // the KazEDS QR still works alone.
+  // - sign: документ as-is (XML raw / CMS base64)
+  // - auth: egovQR не имеет auth-флоу — подписываем challenge-XML, сертификат
+  //   подписанта достаём из XMLDSig (ds:X509Certificate) для getKeyInfo.
   let egov = null;
-  if (operation === "sign" && data) {
+  if ((operation === "sign" && data) || operation === "auth") {
     try {
-      const fmt = format === "xml" ? "xml" : "cms";
       let documentsToSign;
       let signMethod;
-      if (fmt === "xml") {
+      if (operation === "auth") {
+        signMethod = "XML";
+        const challengeXml =
+          `<auth><challenge>${session.challenge || sessionId}</challenge>` +
+          `<origin>${origin}</origin></auth>`;
+        documentsToSign = [{ id: 1, nameRu: `Авторизация на ${senderInfo.domain}`, documentXml: challengeXml }];
+      } else if (format === "xml") {
         // data — base64 от btoa(unescape(encodeURIComponent(xml)))
         const xmlString = decodeURIComponent(escape(atob(data)));
         signMethod = "XML";

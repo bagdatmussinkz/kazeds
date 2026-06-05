@@ -67,6 +67,11 @@
           <div class="qr-image-wrap">
             <img class="qr-image" id="kazeds-qr-img" src="${escapeHtml(data.qrImageUrl)}" width="280" height="280" alt="QR" />
           </div>
+          ${data.egov && data.egov.deeplink ? `
+          <a id="kazeds-egov-deeplink" href="${escapeHtml(data.egov.deeplink)}" target="_blank" rel="noopener"
+             style="display:none;font-size:11px;color:#3b82f6;text-decoration:underline;margin-top:4px">
+            или открыть deeplink в eGov Mobile ↗
+          </a>` : ""}
           <div class="qr-progress"><div class="qr-progress-bar" id="kazeds-bar" style="width:100%"></div></div>
           <div class="qr-countdown">Осталось <strong id="kazeds-countdown">${Math.floor(totalMs / 1000)}</strong> сек</div>
           <div class="qr-status" id="kazeds-status">
@@ -75,7 +80,7 @@
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
           <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
-            <span>KazEDS v2.0.12</span>
+            <span>KazEDS v2.0.13</span>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
               <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
               trace
@@ -101,7 +106,9 @@
       const hint = shadow.getElementById("kazeds-qr-hint");
       const tabK = shadow.getElementById("kazeds-tab-kazeds");
       const tabE = shadow.getElementById("kazeds-tab-egov");
+      const dl = shadow.getElementById("kazeds-egov-deeplink");
       const setActive = (egovMode) => {
+        if (dl) dl.style.display = egovMode ? "inline" : "none";
         img.src = egovMode ? data.egov.qrImageUrl : data.qrImageUrl;
         hint.textContent = egovMode
           ? "Откройте eGov Mobile → кнопка «eGov QR» → сканируйте"

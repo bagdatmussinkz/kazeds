@@ -75,7 +75,7 @@
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
           <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
-            <span>KazEDS v2.0.11</span>
+            <span>KazEDS v2.0.12</span>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
               <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
               trace
@@ -104,7 +104,7 @@
       const setActive = (egovMode) => {
         img.src = egovMode ? data.egov.qrImageUrl : data.qrImageUrl;
         hint.textContent = egovMode
-          ? "Отсканируйте камерой телефона — откроется eGov Mobile"
+          ? "Откройте eGov Mobile → кнопка «eGov QR» → сканируйте"
           : "Откройте KazEDS на телефоне и наведите камеру";
         tabK.style.background = egovMode ? "#fff" : "#1F4E79";
         tabK.style.color = egovMode ? "#334155" : "#fff";

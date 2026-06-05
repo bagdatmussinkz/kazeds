@@ -60,9 +60,17 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
         sessionId: egovSession.session_id,
         signMethod,
         deeplink: egovSession.deeplink,
-        qrImageUrl: generateQRDataURL(egovSession.deeplink, 280),
+        // QR по спеке egovQR: "mobileSign:<url>" — формат сканера внутри
+        // eGov Mobile (кнопка "eGov QR"). https-deeplink (m.egov.kz) — только
+        // запасной вариант для системной камеры, в данных он тоже есть.
+        qrImageUrl: generateQRDataURL(egovSession.qr_content, 280),
       };
-      trace(sessionId, "info", "egov session created", { egovSessionId: egov.sessionId, signMethod, deeplink: egovSession.deeplink });
+      trace(sessionId, "info", "egov session created", {
+        egovSessionId: egov.sessionId,
+        signMethod,
+        qr_content: egovSession.qr_content,
+        deeplink: egovSession.deeplink,
+      });
     } catch (err) {
       trace(sessionId, "warn", "egov session creation failed (KazEDS QR only)", { error: err.message });
     }

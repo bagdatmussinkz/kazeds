@@ -2,7 +2,7 @@
 
 const RELAY_URL = "https://sign.aitu.uz/relay/v1";
 const POLL_INTERVAL_MS = 2000;
-const MAX_POLLS = 150; // 5 minutes
+const MAX_POLLS = 65; // 2 minutes + slack for network latency
 
 export async function createSession(origin, operation, data, format) {
   const body = { origin, operation };

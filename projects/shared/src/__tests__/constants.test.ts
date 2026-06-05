@@ -24,8 +24,8 @@ describe("constants", () => {
     expect(RELAY_BASE_URL).toBe(`${RELAY_URL}/${RELAY_API_VERSION}`);
   });
 
-  it("session TTL is 5 minutes", () => {
-    expect(SESSION_TTL_SECONDS).toBe(300);
+  it("session TTL is 2 minutes", () => {
+    expect(SESSION_TTL_SECONDS).toBe(120);
   });
 
   it("polling covers the full session TTL", () => {

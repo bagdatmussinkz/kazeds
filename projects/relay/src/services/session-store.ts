@@ -82,13 +82,21 @@ export class SessionStore {
     };
   }
 
+  /** Истечь активную сессию (pending ИЛИ scanned), если TTL вышел */
+  private expireIfNeeded(session: Session) {
+    if (
+      (session.status === "pending" || session.status === "scanned") &&
+      session.expiresAt < new Date()
+    ) {
+      session.status = "expired";
+    }
+  }
+
   getPayload(id: string) {
     const session = this.sessions.get(id);
     if (!session) return null;
 
-    if (session.status === "pending" && session.expiresAt < new Date()) {
-      session.status = "expired";
-    }
+    this.expireIfNeeded(session);
 
     if (session.status !== "pending" && session.status !== "scanned") {
       return null; // only allow payload fetch for active sessions
@@ -116,10 +124,8 @@ export class SessionStore {
     const session = this.sessions.get(id);
     if (!session) return null;
 
-    // Проверить истечение
-    if (session.status === "pending" && session.expiresAt < new Date()) {
-      session.status = "expired";
-    }
+    // Проверить истечение (pending и scanned)
+    this.expireIfNeeded(session);
 
     const response: {
       status: SessionStatus;
@@ -149,9 +155,7 @@ export class SessionStore {
       return { success: false, error: "Session not found", statusCode: 404 };
     }
 
-    if (session.expiresAt < new Date() && session.status === "pending") {
-      session.status = "expired";
-    }
+    this.expireIfNeeded(session);
 
     if (session.status !== "pending" && session.status !== "scanned") {
       return {
@@ -201,10 +205,8 @@ export class SessionStore {
     const retainMs = SESSION_RETAIN_AFTER_COMPLETE_SECONDS * 1000;
 
     for (const [id, session] of this.sessions) {
-      // Истечь pending сессии
-      if (session.status === "pending" && session.expiresAt < now) {
-        session.status = "expired";
-      }
+      // Истечь активные сессии (pending и scanned)
+      this.expireIfNeeded(session);
 
       // Удалить старые завершённые
       if (

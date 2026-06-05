@@ -10,6 +10,8 @@
   let shadow = null;
   let currentSessionId = null;
   let progressTimer = null;
+  let deadlineAt = 0;
+  let overlayTotalMs = 1;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.type === "kazeds-show-qr") {
@@ -25,6 +27,7 @@
     }
     if (message.type === "kazeds-qr-status" && message.sessionId === currentSessionId) {
       updateStatus(message.status);
+      if (typeof message.expiresIn === "number") syncCountdown(message.expiresIn);
       sendResponse({ ok: true });
       return true;
     }
@@ -40,7 +43,7 @@
     if (data.deepLink) overlayHost.dataset.deepLink = data.deepLink;
     shadow = overlayHost.attachShadow({ mode: "closed" });
 
-    const expiresMs = data.expiresAt ? new Date(data.expiresAt).getTime() - Date.now() : 300000;
+    const expiresMs = data.expiresAt ? new Date(data.expiresAt).getTime() - Date.now() : 120000;
     const totalMs = Math.max(expiresMs, 10000);
     const isAuth = data.operation === "auth";
     const badgeClass = isAuth ? "qr-badge-auth" : "qr-badge-sign";
@@ -64,7 +67,7 @@
             <span>Ожидание сканирования...</span>
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
-          <div class="qr-branding">KazEDS v2.0.5</div>
+          <div class="qr-branding">KazEDS v2.0.6</div>
         </div>
       </div>
     `;
@@ -90,21 +93,38 @@
       if (backdrop) backdrop.classList.add("visible");
     });
 
-    // Countdown timer
-    const startTime = Date.now();
+    // Countdown timer — deadline-based so background-tab throttling can't drift it.
+    // deadlineAt is resynced from the server's expires_in on every status poll.
+    deadlineAt = Date.now() + totalMs;
+    overlayTotalMs = totalMs;
     const bar = shadow.getElementById("kazeds-bar");
     const countdown = shadow.getElementById("kazeds-countdown");
 
     progressTimer = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, totalMs - elapsed);
-      if (bar) bar.style.width = Math.max(0, (1 - elapsed / totalMs) * 100) + "%";
+      const remaining = Math.max(0, deadlineAt - Date.now());
+      if (bar) bar.style.width = Math.max(0, (remaining / overlayTotalMs) * 100) + "%";
       if (countdown) countdown.textContent = String(Math.ceil(remaining / 1000));
       if (remaining <= 0) {
         clearInterval(progressTimer);
         progressTimer = null;
+        showExpired();
       }
     }, 1000);
+  }
+
+  // Resync local deadline with the relay's authoritative expires_in (seconds)
+  function syncCountdown(expiresInSec) {
+    deadlineAt = Date.now() + expiresInSec * 1000;
+  }
+
+  function showExpired() {
+    if (!shadow) return;
+    const statusEl = shadow.getElementById("kazeds-status");
+    if (statusEl) {
+      statusEl.innerHTML = `<span class="qr-status-expired" style="color:#dc2626;font-weight:600">Время истекло</span>`;
+    }
+    chrome.runtime.sendMessage({ type: "kazeds-cancel-flow", sessionId: currentSessionId });
+    setTimeout(() => removeOverlay(), 2000);
   }
 
   function updateStatus(status) {

@@ -18,13 +18,13 @@ export const WIDGET_URL =
   process.env.KAZEDS_WIDGET_URL || "https://sign.aitu.uz/ext";
 
 // --- Session ---
-export const SESSION_TTL_SECONDS = 300; // 5 минут
+export const SESSION_TTL_SECONDS = 120; // 2 минуты
 export const SESSION_CLEANUP_INTERVAL_SECONDS = 60;
 export const SESSION_RETAIN_AFTER_COMPLETE_SECONDS = 600; // 10 мин
 
 // --- Polling ---
 export const POLLING_INTERVAL_MS = 2000; // 2 секунды
-export const POLLING_MAX_RETRIES = 150; // 5 мин / 2 сек
+export const POLLING_MAX_RETRIES = 65; // 2 мин / 2 сек + запас на сетевые задержки
 
 // --- QR ---
 export const QR_PAYLOAD_VERSION = 1;
@@ -61,6 +61,10 @@ export const JSONRPC_ERRORS = {
   USER_CANCELLED: -32000,
   SERVICE_UNAVAILABLE: -32001,
 } as const;
+
+// --- Tracing ---
+export const TRACE_MAX_EVENTS = 2000; // кольцевой буфер в Relay
+export const TRACE_FLUSH_INTERVAL_MS = 1000; // батч-отправка с клиентов
 
 // --- Rate Limiting ---
 export const RATE_LIMIT = {

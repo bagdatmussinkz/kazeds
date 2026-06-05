@@ -396,8 +396,10 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
     log("[KazEDS trace]", `+${ev.ts}ms`, msg, data ?? "");
     // Remote tracing: ship event (with full payload) to the relay when enabled
     // via localStorage kazeds_trace=1 or trace=true in the URL/hash.
+    // Errors are ALWAYS shipped so failures in the field are captured.
     try {
       const remoteOn =
+        level === "error" ||
         localStorage.getItem("kazeds_trace") === "1" ||
         window.location.href.includes("trace=true");
       if (remoteOn) {

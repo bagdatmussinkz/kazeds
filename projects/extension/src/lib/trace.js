@@ -24,14 +24,16 @@ export function isTraceEnabled() {
 }
 
 /**
- * Queue a trace event. No-op unless tracing is enabled.
+ * Queue a trace event. info-level events require tracing to be enabled;
+ * warn/error events are ALWAYS shipped so failures on real sites are
+ * captured without any manual setup.
  * @param {string|undefined} sessionId
  * @param {"info"|"warn"|"error"} level
  * @param {string} msg
  * @param {unknown} [data] full payload — included verbatim
  */
 export function trace(sessionId, level, msg, data) {
-  if (!enabled) return;
+  if (!enabled && level === "info") return;
   queue.push({
     session_id: sessionId,
     source: "extension-sw",

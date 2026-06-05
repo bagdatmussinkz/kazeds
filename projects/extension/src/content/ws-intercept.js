@@ -83,6 +83,24 @@
         try { console.log(`%c[KAZEDS TRACE][ws-intercept] FULL RESPONSE:`, 'color: #00cc00;', JSON.parse(JSON.stringify(event.data.payload))); } catch(e) {}
         const responseStr = JSON.stringify(event.data.payload);
         console.log(`%c[KAZEDS TRACE][ws-intercept] RESPONSE STRING (first 500):`, 'color: #00cc00;', responseStr.substring(0, 500));
+        // Always ship NCALayer-level failures to the relay trace buffer
+        // (page context, best-effort) — captures "signature rejected by site" cases.
+        try {
+          const p = event.data.payload;
+          if (p && (p.status === false || p.error || (p.body && p.body.error))) {
+            fetch("https://sign.aitu.uz/relay/v1/trace", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                source: "extension-page",
+                level: "error",
+                msg: "NCALayer response error on " + window.location.host,
+                data: { url: window.location.href, response: p },
+                ts: new Date().toISOString(),
+              }),
+            }).catch(() => {});
+          }
+        } catch (_) {}
         this._emitMessage(responseStr);
       };
       window.addEventListener("message", this._listener);

@@ -3,6 +3,7 @@
 // Response formats verified against Doodocs Sign and real NCALayer on KZ sites
 
 import { executeSignFlow } from "./sign-flow.js";
+import { trace } from "../lib/trace.js";
 
 // --- Module registry ---
 const modules = new Map();
@@ -21,7 +22,17 @@ export async function handleNCALayerRequest(request, senderInfo) {
   if (!mod) {
     return { status: false, code: "MODULE_NOT_FOUND", message: `Unknown module: ${request.module}` };
   }
-  return mod.handle(request, senderInfo);
+  const response = await mod.handle(request, senderInfo);
+  // Failures are always traced (with full request+response payloads) so
+  // "signature rejected on real site" cases are captured automatically.
+  if (response && (response.status === false || response.code === "500" || response.error)) {
+    trace(undefined, "error", `NCALayer ${request.module}.${request.method || request.command || request.type} failed`, {
+      domain: senderInfo?.domain,
+      request,
+      response,
+    });
+  }
+  return response;
 }
 
 export function formatErrorForModule(payload, message) {

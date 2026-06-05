@@ -1,7 +1,7 @@
 // Signing flow manager
 // Creates relay session, shows QR overlay on the requesting tab, polls for result
 
-import { createSession, pollSession, cancelSession, buildDeepLink, createEgovSession, pollEgovStatus, RELAY_URL, POLL_INTERVAL_MS, MAX_POLLS } from "../lib/relay-client.js";
+import { createSession, pollSession, cancelSession, buildDeepLink, createEgovSession, pollEgovStatus, linkEgovToSession, RELAY_URL, POLL_INTERVAL_MS, MAX_POLLS } from "../lib/relay-client.js";
 import { generateQRDataURL } from "../lib/qr-generate.js";
 import { trace, isTraceEnabled } from "../lib/trace.js";
 
@@ -71,8 +71,10 @@ export async function executeSignFlow(senderInfo, operation, data, format) {
         // QR по спеке egovQR: "mobileSign:<url>" — формат сканера внутри
         // eGov Mobile (кнопка "eGov QR"). https-deeplink (m.egov.kz) — только
         // запасной вариант для системной камеры, в данных он тоже есть.
-        qrImageUrl: generateQRDataURL(egovSession.qr_content, 280),
+        qrImageUrl: generateQRDataURL(egovSession.qr_content, 280, "H"), // ECC H — выдерживает лого по центру
       };
+      // PWA покажет кнопку «Подписать в eGov Mobile» по этому deeplink
+      linkEgovToSession(sessionId, egovSession.deeplink);
       trace(sessionId, "info", "egov session created", {
         egovSessionId: egov.sessionId,
         signMethod,

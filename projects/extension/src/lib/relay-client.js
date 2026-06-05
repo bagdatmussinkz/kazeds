@@ -85,3 +85,16 @@ export async function pollEgovStatus(sessionId, signal) {
   }
   return resp.json();
 }
+
+/** Привязать egov-deeplink к основной сессии (PWA покажет кнопку eGov Mobile). */
+export async function linkEgovToSession(sessionId, deeplink) {
+  try {
+    await fetch(`${RELAY_URL}/sessions/${sessionId}/egov`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deeplink }),
+    });
+  } catch {
+    // best-effort
+  }
+}

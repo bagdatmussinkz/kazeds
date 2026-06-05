@@ -5,6 +5,27 @@
 
 ## [Unreleased] — ветка `feature/egovqr`
 
+### Extension 2.0.15 · Web App 2.0.10 · Relay 0.4.1
+
+**Added**
+- eGov Mobile — **таб по умолчанию** в QR-оверлее, лого eGov в кнопке и
+  по центру QR-кода (ECC H выдерживает оверлей лого).
+- QR-оверлей для **auth-флоу** (getKeyInfo) тоже создаёт egov-сессию —
+  подпись challenge-XML, сертификат из `ds:X509Certificate`.
+- **Кнопка «Подписать в eGov Mobile»** в PWA: extension линкует egov-deeplink
+  к основной сессии (`PATCH /v1/sessions/:id/egov`), `/payload` отдаёт
+  `egov_deeplink`, PWA показывает кнопку с лого над табами ECDSA/GOST.
+- Версия расширения в консольных логах (`ws-intercept`, `bridge`).
+- README: секции «Возможности», «Как это работает» (детально про перехват
+  NCALayer + WASM-подпись), mermaid-диаграмма, «Роадмап/TODO».
+- Лендинг: промо-редизайн (боли NCALayer, фичи, архитектурная схема,
+  удобство/риски, ссылка на GitHub); секция WiFi удалена.
+
+**Fixed**
+- Исключены stale-копии тестов из `dist/` в vitest; честный счёт 159/159.
+- egov QR кодирует спековый `mobileSign:` (не https-deeplink — тот остался
+  ссылкой под QR для системной камеры).
+
 ### Extension 2.0.11 · Relay 0.4.0
 
 **Added**

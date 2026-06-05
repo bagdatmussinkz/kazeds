@@ -40,6 +40,7 @@ export interface Session {
   challenge: string; // base64, 32 bytes
   status: SessionStatus;
   result?: SigningResult;
+  egovDeeplink?: string; // m.egov.kz deeplink парной egov-сессии (для кнопки в PWA)
   createdAt: Date;
   expiresAt: Date;
   completedAt?: Date;

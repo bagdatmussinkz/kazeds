@@ -85,6 +85,21 @@ export async function sessionRoutes(app: FastifyInstance) {
     return reply.send({ status: "completed" });
   });
 
+  // PATCH /v1/sessions/:id/egov — привязка deeplink парной egov-сессии
+  app.patch("/sessions/:id/egov", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as { deeplink?: string };
+    if (!body?.deeplink || !body.deeplink.startsWith("https://m.egov.kz/")) {
+      return reply.status(400).send({ error: "Validation error", message: "deeplink (m.egov.kz) required" });
+    }
+    const ok = app.sessionStore.setEgovLink(id, body.deeplink);
+    if (!ok) {
+      return reply.status(404).send({ error: "Not found", message: "Session not found or not active" });
+    }
+    trace(app, id, "egov deeplink linked", { deeplink: body.deeplink });
+    return reply.send({ status: "linked" });
+  });
+
   // DELETE /v1/sessions/:id — отмена сессии
   app.delete("/sessions/:id", async (request, reply) => {
     const { id } = request.params as { id: string };

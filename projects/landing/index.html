@@ -3,248 +3,272 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KazEDS — Электронная цифровая подпись</title>
+  <title>KazEDS — Облачная замена NCALayer</title>
+  <meta name="description" content="Цифровая подпись без установки NCALayer. eGov Mobile, локальная ЭЦП в браузере, Chrome-расширение и виджет в одну строку.">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .gradient-text {
-      background: linear-gradient(135deg, #1F4E79 0%, #2980b9 100%);
+      background: linear-gradient(135deg, #1F4E79 0%, #2980b9 60%, #2456E5 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(31,78,121,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(31,78,121,0.04) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    .flow-node { transition: all .2s; }
+    .flow-node:hover { transform: translateY(-2px); }
   </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen antialiased">
+<body class="bg-white text-slate-800 antialiased">
 
   <!-- Nav -->
   <nav class="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/60 z-50">
-    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <div class="w-8 h-8 bg-[#1F4E79] rounded-lg flex items-center justify-center">
           <span class="text-white font-bold text-sm">K</span>
         </div>
         <span class="font-bold text-slate-800">KazEDS</span>
       </div>
-      <div class="flex items-center gap-4 text-sm">
-        <a href="#how" class="text-slate-500 hover:text-slate-800 transition">Как работает</a>
-        <a href="#install" class="text-slate-500 hover:text-slate-800 transition">Установка</a>
-        <a href="#wifi" class="text-slate-500 hover:text-slate-800 transition">WiFi</a>
-        <a href="https://demo.aitu.uz" class="px-4 py-1.5 bg-[#1F4E79] text-white rounded-lg font-medium hover:bg-[#163d5e] transition text-sm">
-          Demo
+      <div class="flex items-center gap-5 text-sm">
+        <a href="#problem" class="hidden sm:inline text-slate-500 hover:text-slate-800 transition">Проблема</a>
+        <a href="#how" class="hidden sm:inline text-slate-500 hover:text-slate-800 transition">Как работает</a>
+        <a href="#features" class="hidden sm:inline text-slate-500 hover:text-slate-800 transition">Возможности</a>
+        <a href="https://github.com/bagdatmussinkz/kazeds" target="_blank" rel="noopener"
+           class="text-slate-500 hover:text-slate-800 transition flex items-center gap-1">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.26.82-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.84 1.237 1.84 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.776.42-1.305.762-1.605-2.665-.305-5.467-1.335-5.467-5.93 0-1.31.467-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23a11.5 11.5 0 016 0c2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22v3.293c0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
         </a>
+        <a href="https://demo.aitu.uz" class="px-4 py-1.5 bg-[#1F4E79] text-white rounded-lg font-medium hover:bg-[#163d5e] transition">Demo</a>
       </div>
     </div>
   </nav>
 
   <!-- Hero -->
-  <section class="pt-28 pb-16 px-6">
+  <section class="grid-bg pt-32 pb-20 px-6">
     <div class="max-w-3xl mx-auto text-center">
-      <div class="w-20 h-20 bg-[#1F4E79] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-900/20">
-        <span class="text-white font-bold text-3xl">K</span>
+      <div class="inline-flex items-center gap-2 px-3 py-1 mb-6 bg-blue-50 text-[#2456E5] rounded-full text-xs font-medium ring-1 ring-blue-100">
+        <span class="w-1.5 h-1.5 bg-[#2456E5] rounded-full animate-pulse"></span>
+        Подпись через официальный eGov Mobile
       </div>
-      <h1 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4 leading-tight">
-        Замена <span class="gradient-text">NCALayer</span><br>
-        для цифровой подписи
+      <h1 class="text-4xl md:text-6xl font-bold text-slate-900 mb-5 leading-[1.1]">
+        ЭЦП без <span class="gradient-text">NCALayer</span>
       </h1>
-      <p class="text-lg text-slate-500 mb-8 max-w-xl mx-auto">
-        Облачная ЭЦП без установки десктоп-приложений. Подписывайте документы прямо с телефона.
+      <p class="text-lg md:text-xl text-slate-500 mb-8 max-w-2xl mx-auto leading-relaxed">
+        Десктопное приложение NCALayer больше не нужно. KazEDS перехватывает запрос подписи прямо в браузере и подписывает на телефоне — через eGov Mobile или вашей ЭЦП в облачном приложении.
       </p>
       <div class="flex flex-wrap items-center justify-center gap-3">
-        <a href="https://demo.aitu.uz" class="px-6 py-3 bg-[#1F4E79] text-white rounded-xl font-semibold hover:bg-[#163d5e] transition shadow-md shadow-blue-900/20 hover:shadow-lg">
+        <a href="https://demo.aitu.uz" class="px-6 py-3 bg-[#1F4E79] text-white rounded-xl font-semibold hover:bg-[#163d5e] transition shadow-lg shadow-blue-900/15 hover:shadow-xl">
           Попробовать Demo
         </a>
         <a href="#install" class="px-6 py-3 bg-white text-slate-700 rounded-xl font-semibold border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition">
-          Установить Extension
+          Установить расширение
         </a>
       </div>
+      <p class="text-slate-400 text-xs mt-5">Сайты на стандартном <code class="font-mono text-slate-500">ncalayer-js-client</code> работают без единой правки кода</p>
     </div>
   </section>
 
-  <!-- How it works -->
-  <section id="how" class="py-16 px-6">
+  <!-- Problem -->
+  <section id="problem" class="py-20 px-6 bg-slate-50 border-y border-slate-100">
     <div class="max-w-4xl mx-auto">
-      <h2 class="text-2xl font-bold text-slate-800 text-center mb-12">Как это работает</h2>
-      <div class="grid md:grid-cols-3 gap-6">
-
-        <div class="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
-          <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4">
-            <span class="text-[#1F4E79] font-bold text-lg">1</span>
-          </div>
-          <h3 class="font-semibold text-slate-800 mb-2">Установите расширение</h3>
-          <p class="text-slate-500 text-sm">
-            Chrome Extension эмулирует NCALayer. Сайты работают без изменений — как будто NCALayer установлен.
-          </p>
+      <h2 class="text-2xl md:text-3xl font-bold text-slate-900 text-center mb-3">Какую боль решаем</h2>
+      <p class="text-slate-500 text-center mb-12 max-w-xl mx-auto">NCALayer — десктопное Java-приложение из 2010-х. С ним живут миллионы казахстанцев, и оно болит.</p>
+      <div class="grid md:grid-cols-2 gap-5">
+        <div class="bg-white rounded-2xl p-6 border border-slate-200/60">
+          <h3 class="font-semibold text-red-600 mb-3 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            Было с NCALayer
+          </h3>
+          <ul class="space-y-2.5 text-sm text-slate-600">
+            <li>• Надо скачать и установить Java-приложение на каждый компьютер</li>
+            <li>• Не работает на телефоне и планшете</li>
+            <li>• Конфликты портов, сертификатов, версий — «NCALayer не запущен»</li>
+            <li>• Ключ <code class="font-mono text-xs">.p12</code> лежит файлом на диске, его легко потерять/скопировать</li>
+            <li>• Устаревший UX, обновления вручную</li>
+          </ul>
         </div>
-
-        <div class="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
-          <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4">
-            <span class="text-[#1F4E79] font-bold text-lg">2</span>
-          </div>
-          <h3 class="font-semibold text-slate-800 mb-2">Сканируйте QR-код</h3>
-          <p class="text-slate-500 text-sm">
-            При запросе подписи расширение покажет QR-код. Отсканируйте его приложением KazEDS на телефоне.
-          </p>
+        <div class="bg-white rounded-2xl p-6 border border-emerald-200 ring-1 ring-emerald-100">
+          <h3 class="font-semibold text-emerald-700 mb-3 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            Стало с KazEDS
+          </h3>
+          <ul class="space-y-2.5 text-sm text-slate-600">
+            <li>• Ничего не устанавливать — расширение или одна строка <code class="font-mono text-xs">&lt;script&gt;</code></li>
+            <li>• Подпись на телефоне: eGov Mobile или ЭЦП в браузере</li>
+            <li>• Никаких локальных серверов и портов</li>
+            <li>• Ключ шифруется AES-256-GCM и не покидает устройство</li>
+            <li>• Сайтам не нужно менять код — тот же <code class="font-mono text-xs">ncalayer-js-client</code></li>
+          </ul>
         </div>
-
-        <div class="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
-          <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4">
-            <span class="text-[#1F4E79] font-bold text-lg">3</span>
-          </div>
-          <h3 class="font-semibold text-slate-800 mb-2">Подпишите на телефоне</h3>
-          <p class="text-slate-500 text-sm">
-            Подтвердите операцию в приложении. Подпись будет отправлена на сайт автоматически. Готово!
-          </p>
-        </div>
-
       </div>
     </div>
   </section>
 
-  <!-- Architecture -->
-  <section class="py-16 px-6 bg-white/50">
+  <!-- How it works — architecture -->
+  <section id="how" class="py-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-2xl md:text-3xl font-bold text-slate-900 text-center mb-3">Как это работает</h2>
+      <p class="text-slate-500 text-center mb-12 max-w-xl mx-auto">Сайт думает, что говорит с NCALayer. На деле — KazEDS подменяет <code class="font-mono text-slate-600">WebSocket</code> и уводит подпись на телефон.</p>
+
+      <!-- Flow diagram -->
+      <div class="bg-slate-50 rounded-3xl border border-slate-200/60 p-6 md:p-10 mb-10">
+        <div class="flex flex-col lg:flex-row items-stretch justify-center gap-3 text-sm">
+          <div class="flow-node bg-white rounded-2xl border border-slate-200 p-5 text-center flex-1 max-w-[200px] mx-auto">
+            <div class="text-xs text-slate-400 mb-1">1 · Браузер</div>
+            <div class="font-semibold text-slate-700 mb-1">Сайт (eGov и др.)</div>
+            <div class="text-xs text-slate-400 font-mono">ncalayer-js-client<br>wss://127.0.0.1:13579</div>
+          </div>
+          <div class="hidden lg:flex items-center text-slate-300"><svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg></div>
+          <div class="flow-node bg-[#1F4E79] rounded-2xl p-5 text-center text-white flex-1 max-w-[200px] mx-auto">
+            <div class="text-xs text-white/60 mb-1">2 · Перехват</div>
+            <div class="font-semibold mb-1">Extension / Widget</div>
+            <div class="text-xs text-white/70">Подменяет WebSocket,<br>создаёт сессию</div>
+          </div>
+          <div class="hidden lg:flex items-center text-slate-300"><svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg></div>
+          <div class="flow-node bg-white rounded-2xl border border-slate-200 p-5 text-center flex-1 max-w-[200px] mx-auto">
+            <div class="text-xs text-slate-400 mb-1">3 · Облако</div>
+            <div class="font-semibold text-slate-700 mb-1">Cloud Relay</div>
+            <div class="text-xs text-slate-400">Сессии, QR,<br>поллинг статуса</div>
+          </div>
+          <div class="hidden lg:flex items-center text-slate-300"><svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg></div>
+          <div class="flow-node bg-emerald-50 rounded-2xl border border-emerald-200 p-5 text-center flex-1 max-w-[200px] mx-auto">
+            <div class="text-xs text-emerald-600 mb-1">4 · Телефон</div>
+            <div class="font-semibold text-emerald-800 mb-1">eGov Mobile / PWA</div>
+            <div class="text-xs text-emerald-600/80">Подпись ЭЦП,<br>результат назад</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two technical cards -->
+      <div class="grid md:grid-cols-2 gap-5">
+        <div class="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+          <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center text-[#1F4E79] text-sm font-bold">⚡</span>
+            Перехват NCALayer
+          </h3>
+          <p class="text-sm text-slate-500 leading-relaxed">
+            Скрипт инжектится в страницу при <code class="font-mono text-xs text-slate-600">document_start</code> и подменяет <code class="font-mono text-xs text-slate-600">window.WebSocket</code>. Соединения на <code class="font-mono text-xs text-slate-600">127.0.0.1:13579</code> ловит «фейковый» сокет с полной эмуляцией событий и heartbeat. Сайт шлёт обычный NCALayer JSON-RPC — мост через <code class="font-mono text-xs text-slate-600">postMessage</code> уводит его в service worker, оттуда в облако. Результат «выстреливает» назад как WS-сообщение.
+          </p>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+          <h3 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <span class="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-700 text-sm font-bold">🔐</span>
+            ГОСТ-подпись в браузере (WASM)
+          </h3>
+          <p class="text-sm text-slate-500 leading-relaxed">
+            Движок — Go, скомпилированный в WebAssembly (~7 МБ). Парсит <code class="font-mono text-xs text-slate-600">.p12</code> НУЦ РК, хеширует данные Стрибогом (ГОСТ 34.11-2015), подписывает ГОСТ 34.10-2015, собирает CMS/CAdES-BES и добавляет метку времени RFC 3161 от боевого TSA НУЦ → юридически значимый CAdES-T. Ключ живёт в памяти только во время подписи.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="py-20 px-6 bg-slate-50 border-y border-slate-100">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-2xl md:text-3xl font-bold text-slate-900 text-center mb-12">Возможности</h2>
+      <div class="grid md:grid-cols-3 gap-5">
+        <div class="bg-white rounded-2xl p-6 border border-slate-200/60">
+          <div class="w-11 h-11 bg-[#2456E5] rounded-xl flex items-center justify-center mb-4 text-white font-bold">eG</div>
+          <h3 class="font-semibold text-slate-800 mb-2">eGov QR</h3>
+          <p class="text-slate-500 text-sm">Подписание через официальное приложение eGov Mobile. Сканируешь QR или жмёшь deeplink — подпись штатной ЭЦП. Домен в whitelist eGov.</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-200/60">
+          <div class="w-11 h-11 bg-emerald-500 rounded-xl flex items-center justify-center mb-4 text-white">🔑</div>
+          <h3 class="font-semibold text-slate-800 mb-2">Локальная ЭЦП в PWA</h3>
+          <p class="text-slate-500 text-sm">Свой <code class="font-mono text-xs">.p12</code> загружается в мобильную PWA — ГОСТ-подпись прямо в браузере телефона. Ключ шифруется и не покидает устройство.</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-200/60">
+          <div class="w-11 h-11 bg-[#1F4E79] rounded-xl flex items-center justify-center mb-4 text-white">🧩</div>
+          <h3 class="font-semibold text-slate-800 mb-2">Chrome Extension</h3>
+          <p class="text-slate-500 text-sm">Эмулирует NCALayer для любого сайта. QR-оверлей с табами eGov Mobile / KazEDS. Сайту менять ничего не нужно.</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-200/60">
+          <div class="w-11 h-11 bg-amber-500 rounded-xl flex items-center justify-center mb-4 text-white">&lt;/&gt;</div>
+          <h3 class="font-semibold text-slate-800 mb-2">JS-виджет</h3>
+          <p class="text-slate-500 text-sm">Одна строка <code class="font-mono text-xs">&lt;script&gt;</code> — то же самое без установки расширения. Подключается на любой сайт.</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-200/60">
+          <div class="w-11 h-11 bg-purple-500 rounded-xl flex items-center justify-center mb-4 text-white">⏱</div>
+          <h3 class="font-semibold text-slate-800 mb-2">CAdES-T</h3>
+          <p class="text-slate-500 text-sm">Метка времени RFC 3161 от боевого TSA НУЦ РК — юридически значимая подпись. Fallback на CAdES-BES, если TSA недоступен.</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-200/60">
+          <div class="w-11 h-11 bg-teal-500 rounded-xl flex items-center justify-center mb-4 text-white">✓</div>
+          <h3 class="font-semibold text-slate-800 mb-2">Верификация</h3>
+          <p class="text-slate-500 text-sm">Java-верифаер: криптопроверка ГОСТ CMS и валидация цепочки сертификатов до корня НУЦ РК.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust / risks -->
+  <section class="py-20 px-6">
     <div class="max-w-4xl mx-auto">
-      <h2 class="text-2xl font-bold text-slate-800 text-center mb-4">Архитектура</h2>
-      <p class="text-slate-500 text-center mb-10 max-w-lg mx-auto">
-        Сайты не знают о KazEDS — они общаются со стандартным NCALayer API
-      </p>
-      <div class="flex flex-col md:flex-row items-center justify-center gap-3 text-sm">
-        <div class="bg-white rounded-xl border border-slate-200 p-4 text-center min-w-[140px]">
-          <div class="text-slate-400 text-xs mb-1">Сайт (eGov и др.)</div>
-          <div class="font-semibold text-slate-700">ncalayer-js-client</div>
+      <h2 class="text-2xl md:text-3xl font-bold text-slate-900 text-center mb-3">Удобство и безопасность — честно</h2>
+      <p class="text-slate-500 text-center mb-12 max-w-xl mx-auto">Что вы получаете и о чём стоит знать.</p>
+      <div class="grid md:grid-cols-2 gap-5">
+        <div class="bg-emerald-50/50 rounded-2xl p-6 border border-emerald-200/60">
+          <h3 class="font-semibold text-emerald-700 mb-3">Что хорошо</h3>
+          <ul class="space-y-2 text-sm text-slate-600">
+            <li>✓ Ключ никогда не уходит на сервер: relay видит только запрос и готовую подпись</li>
+            <li>✓ <code class="font-mono text-xs">.p12</code> в браузере шифруется AES-256-GCM, ключ из PIN через PBKDF2 (600k итераций)</li>
+            <li>✓ eGov-режим — подпись вообще в официальном госприложении, мы лишь передаём документ</li>
+            <li>✓ Кросс-девайс: подписал телефоном — авторизовался на компьютере</li>
+          </ul>
         </div>
-        <svg class="w-6 h-6 text-slate-300 rotate-90 md:rotate-0 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-        <div class="bg-[#1F4E79] rounded-xl p-4 text-center text-white min-w-[140px]">
-          <div class="text-white/60 text-xs mb-1">Chrome</div>
-          <div class="font-semibold">KazEDS Extension</div>
-        </div>
-        <svg class="w-6 h-6 text-slate-300 rotate-90 md:rotate-0 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 text-center min-w-[140px]">
-          <div class="text-slate-400 text-xs mb-1">Облако</div>
-          <div class="font-semibold text-slate-700">Cloud Relay</div>
-        </div>
-        <svg class="w-6 h-6 text-slate-300 rotate-90 md:rotate-0 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-        <div class="bg-emerald-50 rounded-xl border border-emerald-200 p-4 text-center min-w-[140px]">
-          <div class="text-emerald-600 text-xs mb-1">Телефон</div>
-          <div class="font-semibold text-emerald-800">KazEDS App</div>
+        <div class="bg-amber-50/50 rounded-2xl p-6 border border-amber-200/60">
+          <h3 class="font-semibold text-amber-700 mb-3">О чём помнить</h3>
+          <ul class="space-y-2 text-sm text-slate-600">
+            <li>• Relay — точка маршрутизации сессий (без ключей), её доступность важна для потока</li>
+            <li>• Сессии живут в памяти 2 минуты, без базы — это MVP-ограничение</li>
+            <li>• eGov-режим требует, чтобы домен был в whitelist eGov Mobile</li>
+            <li>• Трейсинг с полными payload — опциональный, включается вручную для отладки</li>
+          </ul>
         </div>
       </div>
     </div>
   </section>
 
   <!-- Install -->
-  <section id="install" class="py-16 px-6">
-    <div class="max-w-2xl mx-auto">
-      <h2 class="text-2xl font-bold text-slate-800 text-center mb-10">Установка</h2>
-
-      <!-- Extension -->
-      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 mb-6">
-        <div class="flex items-start gap-4">
-          <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-            <svg class="w-6 h-6 text-[#1F4E79]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.39 48.39 0 01-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 01-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 00-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 01-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 00.657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 01-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.4.604-.4.959v0c0 .333.277.599.61.58a48.1 48.1 0 005.427-.63 48.05 48.05 0 00.582-4.717.532.532 0 00-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.959.401v0a.656.656 0 00.658-.663 48.422 48.422 0 00-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 01-.61-.58v0z" />
-            </svg>
-          </div>
-          <div class="flex-1">
-            <h3 class="font-semibold text-slate-800 mb-1">Chrome Extension</h3>
-            <p class="text-slate-500 text-sm mb-4">Устанавливается в браузер на компьютере</p>
-            <a href="https://sign.aitu.uz/ext/eds_v2.0.14.zip" download
-              class="inline-flex items-center gap-2 px-4 py-2 bg-[#1F4E79] text-white rounded-lg text-sm font-medium hover:bg-[#163d5e] transition shadow-sm">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Скачать .zip
-            </a>
-            <ol class="mt-4 text-sm text-slate-500 space-y-1.5 list-decimal list-inside">
-              <li>Скачайте и распакуйте архив</li>
-              <li>Откройте <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs">chrome://extensions</code></li>
-              <li>Включите <strong class="text-slate-600">Режим разработчика</strong> (правый верхний угол)</li>
-              <li>Нажмите <strong class="text-slate-600">Загрузить распакованное расширение</strong></li>
-              <li>Выберите распакованную папку</li>
-            </ol>
-          </div>
-        </div>
+  <section id="install" class="py-20 px-6 bg-slate-50 border-t border-slate-100">
+    <div class="max-w-2xl mx-auto text-center">
+      <h2 class="text-2xl md:text-3xl font-bold text-slate-900 mb-3">Начать</h2>
+      <p class="text-slate-500 mb-8">Расширение для Chrome или одна строка виджета на сайт.</p>
+      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 mb-5 text-left">
+        <p class="text-sm text-slate-500 mb-3">Виджет — добавьте в <code class="font-mono text-xs">&lt;head&gt;</code>:</p>
+        <pre class="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs overflow-x-auto"><code>&lt;script src="https://sign.aitu.uz/ext/eds.js"&gt;&lt;/script&gt;</code></pre>
       </div>
-
-      <!-- Mobile App -->
-      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6">
-        <div class="flex items-start gap-4">
-          <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
-            <svg class="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-            </svg>
-          </div>
-          <div class="flex-1">
-            <h3 class="font-semibold text-slate-800 mb-1">Мобильное приложение</h3>
-            <p class="text-slate-500 text-sm mb-4">PWA — работает в браузере телефона, установка не нужна</p>
-            <div class="flex items-center gap-4">
-              <div class="p-2 bg-white rounded-lg border border-slate-200 shadow-sm">
-                <img
-                  src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https%3A%2F%2Fsign.aitu.uz%2Fapp"
-                  alt="QR" width="120" height="120" class="rounded"
-                />
-              </div>
-              <div class="text-sm">
-                <p class="text-slate-500 mb-2">Отсканируйте QR или откройте:</p>
-                <a href="https://sign.aitu.uz/app" target="_blank" rel="noopener noreferrer"
-                  class="inline-flex items-center gap-1 text-[#1F4E79] hover:text-[#163d5e] font-medium transition">
-                  sign.aitu.uz/app
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- WiFi -->
-  <section id="wifi" class="py-16 px-6 bg-white/50">
-    <div class="max-w-md mx-auto text-center">
-      <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-        <svg class="w-8 h-8 text-[#1F4E79]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
-        </svg>
-      </div>
-
-      <h2 class="text-2xl font-bold text-slate-800 mb-1">Подключение к WiFi</h2>
-      <p class="text-slate-400 text-sm mb-6">Отсканируйте QR-код камерой телефона для автоматического подключения</p>
-
-      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 inline-block mb-6">
-        <img
-          src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=WIFI%3AT%3AWPA%3BS%3Apred%3BP%3A8n4egr4d3ynbx%3B%3B"
-          alt="WiFi QR" width="250" height="250" class="rounded-lg"
-        />
-      </div>
-
-      <div class="bg-slate-50 rounded-xl p-5 text-left max-w-xs mx-auto">
-        <div class="mb-3">
-          <p class="text-xs text-slate-400 uppercase tracking-wider font-medium mb-1">Сеть</p>
-          <p class="text-xl font-bold text-slate-800">pred</p>
-        </div>
-        <div class="border-t border-slate-200 mb-3"></div>
-        <div>
-          <p class="text-xs text-slate-400 uppercase tracking-wider font-medium mb-1">Пароль</p>
-          <div class="flex items-center justify-between gap-2">
-            <code class="text-xl font-mono font-bold text-slate-800 select-all">8n4egr4d3ynbx</code>
-            <button onclick="navigator.clipboard.writeText('8n4egr4d3ynbx');this.textContent='OK!';setTimeout(()=>this.textContent='Copy',1500)"
-              class="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-500 hover:bg-slate-100 transition flex-shrink-0">
-              Copy
-            </button>
-          </div>
-        </div>
-        <p class="text-slate-300 text-xs mt-3">WPA/WPA2</p>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <a href="https://sign.aitu.uz/ext/eds_v2.0.15.zip" download
+           class="px-6 py-3 bg-[#1F4E79] text-white rounded-xl font-semibold hover:bg-[#163d5e] transition shadow-md">
+          Скачать расширение
+        </a>
+        <a href="https://github.com/bagdatmussinkz/kazeds" target="_blank" rel="noopener"
+           class="px-6 py-3 bg-white text-slate-700 rounded-xl font-semibold border border-slate-200 hover:bg-slate-50 transition flex items-center gap-2">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.26.82-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.84 1.237 1.84 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.776.42-1.305.762-1.605-2.665-.305-5.467-1.335-5.467-5.93 0-1.31.467-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23a11.5 11.5 0 016 0c2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22v3.293c0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          Код на GitHub
+        </a>
       </div>
     </div>
   </section>
 
   <!-- Footer -->
-  <footer class="py-8 px-6 text-center text-slate-400 text-xs border-t border-slate-200/60">
-    <div class="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-4">
-      <span>KazEDS v1.0</span>
-      <span class="text-slate-200">|</span>
-      <a href="https://demo.aitu.uz" class="hover:text-slate-600 transition">Demo</a>
-      <a href="https://sign.aitu.uz/app" class="hover:text-slate-600 transition">App</a>
-      <a href="http://sign.aitu.uz" class="hover:text-slate-600 transition">Landing</a>
+  <footer class="py-10 px-6 border-t border-slate-100">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 bg-[#1F4E79] rounded-md flex items-center justify-center"><span class="text-white font-bold text-xs">K</span></div>
+        <span>KazEDS — облачная замена NCALayer</span>
+      </div>
+      <div class="flex items-center gap-5">
+        <a href="https://demo.aitu.uz" class="hover:text-slate-600 transition">Demo</a>
+        <a href="https://sign.aitu.uz/app" class="hover:text-slate-600 transition">App</a>
+        <a href="https://github.com/bagdatmussinkz/kazeds" target="_blank" rel="noopener" class="hover:text-slate-600 transition">GitHub</a>
+      </div>
     </div>
   </footer>
 

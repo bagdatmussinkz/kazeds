@@ -6,6 +6,7 @@
 (function () {
   "use strict";
 
+  const KAZEDS_VERSION = "2.0.15"; // kept in sync by the version bump sed
   const INSTALL_FLAG = "__kazeds_ws_installed";
   if (window[INSTALL_FLAG]) return;
   window[INSTALL_FLAG] = true;
@@ -197,7 +198,7 @@
 
   window.WebSocket = function (url, protocols) {
     if (isNCALayerURL(url)) {
-      console.log(`%c[KAZEDS TRACE][ws-intercept] INTERCEPTING WebSocket to ${url}`, 'color: #ff00ff; font-weight: bold;');
+      console.log(`%c[KAZEDS TRACE][ws-intercept v${KAZEDS_VERSION}] INTERCEPTING WebSocket to ${url}`, 'color: #ff00ff; font-weight: bold;');
       return new FakeWebSocket(url, protocols);
     }
     if (protocols !== undefined) {

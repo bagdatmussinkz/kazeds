@@ -110,7 +110,18 @@ export class SessionStore {
       data: session.data || null,
       callback_url: `${RELAY_BASE_URL}/sessions/${session.id}/complete`,
       expires_at: session.expiresAt.toISOString(),
+      egov_deeplink: session.egovDeeplink || null,
     };
+  }
+
+  /** Привязать deeplink парной egov-сессии (вызывает extension после её создания) */
+  setEgovLink(id: string, deeplink: string): boolean {
+    const session = this.sessions.get(id);
+    if (!session) return false;
+    this.expireIfNeeded(session);
+    if (session.status !== "pending" && session.status !== "scanned") return false;
+    session.egovDeeplink = deeplink;
+    return true;
   }
 
   markScanned(id: string) {

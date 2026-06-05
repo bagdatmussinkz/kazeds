@@ -67,8 +67,11 @@
               eGov Mobile
             </button>
           </div>` : ""}
-          <div class="qr-image-wrap">
+          <div class="qr-image-wrap" style="position:relative;display:inline-block">
             <img class="qr-image" id="kazeds-qr-img" src="${escapeHtml(data.qrImageUrl)}" width="280" height="280" alt="QR" />
+            ${data.egov ? `
+            <img id="kazeds-qr-logo" src="${chrome.runtime.getURL("icons/egov-logo.png")}" width="48" height="48" alt=""
+              style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:10px;background:#fff;padding:3px;box-shadow:0 0 0 2px #fff" />` : ""}
           </div>
           ${data.egov && data.egov.deeplink ? `
           <a id="kazeds-egov-deeplink" href="${escapeHtml(data.egov.deeplink)}" target="_blank" rel="noopener"
@@ -83,7 +86,7 @@
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
           <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
-            <span>KazEDS v2.0.14</span>
+            <span>KazEDS v2.0.15</span>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
               <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
               trace
@@ -110,8 +113,10 @@
       const tabK = shadow.getElementById("kazeds-tab-kazeds");
       const tabE = shadow.getElementById("kazeds-tab-egov");
       const dl = shadow.getElementById("kazeds-egov-deeplink");
+      const logo = shadow.getElementById("kazeds-qr-logo");
       const setActive = (egovMode) => {
         if (dl) dl.style.display = egovMode ? "inline" : "none";
+        if (logo) logo.style.display = egovMode ? "block" : "none";
         img.src = egovMode ? data.egov.qrImageUrl : data.qrImageUrl;
         hint.textContent = egovMode
           ? "Откройте eGov Mobile → кнопка «eGov QR» → сканируйте"

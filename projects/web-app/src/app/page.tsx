@@ -15,6 +15,7 @@ interface SignParams {
   op: "sign" | "auth" | "signxml";
   fmt: string; // "cms" | "xml"
   needsFetch?: boolean; // true when using short QR URL — must fetch from relay
+  egovDeeplink?: string; // парная egov-сессия — кнопка «Подписать в eGov Mobile»
 }
 
 type Route = { page: "home" } | { page: "sign"; params: SignParams };
@@ -368,7 +369,7 @@ function HomePage() {
           </button>
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.9 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.10 — Мобильная ЭЦП</p>
       </div>
     </main>
   );
@@ -459,6 +460,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           data: payload.data || "",
           op: initialParams.op,
           fmt: initialParams.fmt,
+          egovDeeplink: payload.egov_deeplink || undefined,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to load session";
@@ -621,7 +623,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const buildDebugReport = useCallback((): string => {
     const errInfo = state.status === "error" ? { friendly: state.message, raw: state.rawError, stack: state.stack } : null;
     const report = {
-      version: "2.0.9",
+      version: "2.0.10",
       time: new Date().toISOString(),
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "n/a",
       session: params.session,
@@ -734,6 +736,16 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           )}
           {!loading && !fetchError && state.status === "idle" && (
             <div className="space-y-3">
+              {params.egovDeeplink && (
+                <a
+                  href={params.egovDeeplink}
+                  className="w-full flex items-center justify-center gap-2.5 py-3 bg-[#2456E5] text-white font-semibold rounded-xl hover:bg-[#1d47c4] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/app/icons/egov-logo.png" alt="" width={22} height={22} className="rounded-md" />
+                  Подписать в eGov Mobile
+                </a>
+              )}
               {/* Method selector */}
               <div className="flex gap-2">
                 <button onClick={() => setMethod("ECDSA")}
@@ -902,7 +914,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           )}
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.9 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.10 — Мобильная ЭЦП</p>
       </div>
     </main>
   );

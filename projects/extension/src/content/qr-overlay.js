@@ -62,7 +62,10 @@
             <button id="kazeds-tab-kazeds" type="button"
               style="padding:5px 14px;border-radius:8px;border:1px solid #1F4E79;background:#1F4E79;color:#fff;font-size:12px;cursor:pointer">KazEDS</button>
             <button id="kazeds-tab-egov" type="button"
-              style="padding:5px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;cursor:pointer">eGov Mobile</button>
+              style="display:flex;align-items:center;gap:6px;padding:5px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;cursor:pointer">
+              <img src="${chrome.runtime.getURL("icons/egov-logo.png")}" width="16" height="16" alt="" style="border-radius:4px" />
+              eGov Mobile
+            </button>
           </div>` : ""}
           <div class="qr-image-wrap">
             <img class="qr-image" id="kazeds-qr-img" src="${escapeHtml(data.qrImageUrl)}" width="280" height="280" alt="QR" />
@@ -80,7 +83,7 @@
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
           <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
-            <span>KazEDS v2.0.13</span>
+            <span>KazEDS v2.0.14</span>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
               <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
               trace
@@ -122,6 +125,7 @@
       };
       tabK.addEventListener("click", () => setActive(false));
       tabE.addEventListener("click", () => setActive(true));
+      setActive(true); // eGov Mobile — таб по умолчанию
     }
 
     // Trace toggle → service worker → chrome.storage (info-level events on/off)

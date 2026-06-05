@@ -255,7 +255,7 @@ curl -X POST https://sign.aitu.uz/relay/v1/sessions \
 docker run --rm -v $(pwd):/app -w /app node:22-alpine sh -c "corepack enable && pnpm test"
 ```
 
-**133 теста** across 10 файлов:
+**159 тестов** across 11 файлов:
 
 | Компонент | Файл | Тестов |
 |-----------|------|--------|
@@ -267,7 +267,7 @@ docker run --rm -v $(pwd):/app -w /app node:22-alpine sh -c "corepack enable && 
 | Web App | `qr-parser.test.ts` | 11 |
 | Web App | `relay-client.test.ts` | 5 |
 | Web App | `key-manager.test.ts` | 23 |
-| Extension | `ncalayer-handler.test.mjs` | 16 |
+| Extension | `x509.test.mjs` | 6 |
 
 ## Структура проекта
 

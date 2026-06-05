@@ -8,7 +8,7 @@
  * - PUT  /v1/egov/:id/documents — API #2 PUT: submit signed documents
  * - GET  /v1/egov/:id/status — poll session status (for the creating party)
  */
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { egovRoutes } from "../routes/egov";
@@ -374,7 +374,7 @@ describe("PUT /v1/egov/:id/documents", () => {
       documentsToSign: docs.documentsToSign.map((doc: any) => ({
         ...doc,
         documentXml: doc.documentXml
-          ? `<signed>${doc.documentXml}</signed>`
+          ? `<signed>${doc.documentXml}<ds:SignatureValue>QUJD</ds:SignatureValue><ds:X509Certificate>TUlJ</ds:X509Certificate></signed>`
           : doc.documentXml,
       })),
     };
@@ -394,7 +394,7 @@ describe("PUT /v1/egov/:id/documents", () => {
 
     const res = await inject("PUT", `/v1/egov/${session_id}/documents`, {
       signMethod: "XML",
-      documentsToSign: [{ id: 1, nameRu: "test", documentXml: "<signed/>" }],
+      documentsToSign: [{ id: 1, nameRu: "test", documentXml: "<signed><ds:SignatureValue>QUJD</ds:SignatureValue><ds:X509Certificate>TUlJ</ds:X509Certificate></signed>" }],
     });
     expect(res.statusCode).toBe(401);
   });
@@ -409,7 +409,7 @@ describe("PUT /v1/egov/:id/documents", () => {
       {
         signMethod: "XML",
         documentsToSign: [
-          { id: 1, nameRu: "test", documentXml: "<signed/>" },
+          { id: 1, nameRu: "test", documentXml: "<signed><ds:SignatureValue>QUJD</ds:SignatureValue><ds:X509Certificate>TUlJ</ds:X509Certificate></signed>" },
         ],
       },
       { authorization: "Bearer wrong-token" }
@@ -425,7 +425,7 @@ describe("PUT /v1/egov/:id/documents", () => {
       documentsToSign: docs.documentsToSign.map((doc: any) => ({
         ...doc,
         documentXml: doc.documentXml
-          ? `<signed>${doc.documentXml}</signed>`
+          ? `<signed>${doc.documentXml}<ds:SignatureValue>QUJD</ds:SignatureValue><ds:X509Certificate>TUlJ</ds:X509Certificate></signed>`
           : doc.documentXml,
       })),
     };
@@ -458,7 +458,7 @@ describe("PUT /v1/egov/:id/documents", () => {
       {
         signMethod: "XML",
         documentsToSign: [
-          { id: 1, nameRu: "test", documentXml: "<signed/>" },
+          { id: 1, nameRu: "test", documentXml: "<signed><ds:SignatureValue>QUJD</ds:SignatureValue><ds:X509Certificate>TUlJ</ds:X509Certificate></signed>" },
         ],
       },
       { authorization: "Bearer some-token" }
@@ -503,7 +503,7 @@ describe("GET /v1/egov/:id/status", () => {
       ...docs,
       documentsToSign: docs.documentsToSign.map((doc: any) => ({
         ...doc,
-        documentXml: `<signed>${doc.documentXml}</signed>`,
+        documentXml: `<signed>${doc.documentXml}<ds:SignatureValue>QUJD</ds:SignatureValue><ds:X509Certificate>TUlJ</ds:X509Certificate></signed>`,
       })),
     };
     await inject("PUT", `/v1/egov/${session_id}/documents`, signedDocs, {
@@ -580,7 +580,7 @@ describe("E2E: eGov QR signing flow", () => {
       signMethod: docsBody.signMethod,
       documentsToSign: docsBody.documentsToSign.map((doc: any) => ({
         ...doc,
-        documentXml: `<signed>${doc.documentXml}</signed>`,
+        documentXml: `<signed>${doc.documentXml}<ds:SignatureValue>QUJD</ds:SignatureValue><ds:X509Certificate>TUlJ</ds:X509Certificate></signed>`,
       })),
     };
 
@@ -722,5 +722,58 @@ describe("E2E: eGov QR signing flow", () => {
     expect(st1.json().status).toBe("pending");
     expect(st2.json().status).toBe("completed");
     expect(st3.json().status).toBe("pending");
+  });
+});
+
+// ==================== egovQR additions (deeplink, scanned expiry, 403) ====================
+
+describe("egovQR: deeplink + validation", () => {
+  it("create returns m.egov.kz universal deeplink wrapping mgovSign", async () => {
+    const res = await inject("POST", "/v1/egov/sessions", validSession);
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.deeplink).toContain("https://m.egov.kz/mobileSign?link=");
+    expect(decodeURIComponent(body.deeplink)).toContain(`/v1/egov/${body.session_id}/mgovSign`);
+    expect(body.deeplink).toContain("apn=kz.mobile.mgov");
+  });
+
+  it("PUT rejects unsigned XML with 403", async () => {
+    const create = await inject("POST", "/v1/egov/sessions", validSession);
+    const { session_id, qr_content } = create.json();
+    // scan → get token
+    const mgov = await inject("GET", `/v1/egov/${session_id}/mgovSign`);
+    const token = mgov.json().document.auth_token;
+
+    const res = await inject(
+      "PUT",
+      `/v1/egov/${session_id}/documents`,
+      {
+        signMethod: "XML",
+        documentsToSign: [{ id: 1, nameRu: "test", documentXml: "<data>no signature here</data>" }],
+      },
+      { authorization: `Bearer ${token}` },
+    );
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error).toBe("Invalid signature");
+    // session must stay signable
+    const status = await inject("GET", `/v1/egov/${session_id}/status`);
+    expect(status.json().status).toBe("scanned");
+    expect(qr_content).toContain("mobileSign:");
+  });
+
+  it("scanned sessions expire after TTL", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] }); // только Date — fastify timers живые
+    try {
+      const create = await inject("POST", "/v1/egov/sessions", validSession);
+      const { session_id } = create.json();
+      await inject("GET", `/v1/egov/${session_id}/mgovSign`); // → scanned
+
+      vi.setSystemTime(new Date(Date.now() + 6 * 60 * 1000)); // прыжок за TTL (5 мин)
+
+      const status = await inject("GET", `/v1/egov/${session_id}/status`);
+      expect(status.json().status).toBe("expired");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

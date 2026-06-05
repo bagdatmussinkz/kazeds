@@ -3,7 +3,34 @@
 Формат вдохновлён [Keep a Changelog](https://keepachangelog.com/ru/).
 Версии указаны по компонентам: Extension (chrome), Web App (PWA), Relay/Shared.
 
-## [Unreleased] — ветка `feature/aitu-miniapp`
+## [Unreleased] — ветка `feature/egovqr`
+
+### Extension 2.0.11 · Relay 0.4.0
+
+**Added**
+- **Подписание через официальный eGov Mobile (egovQR)** — домен
+  `sign.aitu.uz` включён в whitelist eGov:
+  - Расширение для sign-операций создаёт **две** сессии параллельно:
+    KazEDS PWA и eGov; QR-оверлей получил табы «KazEDS | eGov Mobile»;
+    поллинг обеих, побеждает первая завершённая.
+  - eGov-QR — universal deeplink `https://m.egov.kz/mobileSign?link=…`
+    (формат rekassa): системная камера телефона открывает eGov Mobile.
+  - Relay: API №1 `mgovSign` / API №2 GET+PUT по спеке eGovQR; в ответе
+    create добавлен `deeplink`.
+  - **Валидация подписи в PUT (шаг 8 спеки)**: XML — структурная проверка
+    XMLDSig; CMS — криптографическая через Java verifier; невалидная
+    подпись → `403`, успех → `200 "success"`.
+  - eGov-сессии в `scanned` теперь истекают по TTL (тот же фикс, что и
+    для основных сессий); полный trace lifecycle egov-сессий.
+- Маппинг результата eGov → NCALayer: XML — подписанный `documentXml` +
+  сертификат из `ds:X509Certificate`; CMS — `file.data` как
+  `cmsSignature`.
+
+**Tests**: 270 (35 egov, включая e2e-эмуляцию eGov Mobile curl-ом:
+create → mgovSign → documents → PUT(мусор)=403 → PUT(реальная GOST CMS)=200
+→ status=completed).
+
+## [merged] — ветка `feature/aitu-miniapp`
 
 ### Extension 2.0.10 · Web App 2.0.9
 

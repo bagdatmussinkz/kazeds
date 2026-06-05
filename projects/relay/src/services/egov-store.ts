@@ -56,10 +56,18 @@ export class EgovStore {
 
     this.sessions.set(id, session);
 
+    const mgovSignUrl = `${RELAY_BASE_URL}/v1/egov/${id}/mgovSign`;
+    // Universal deeplink — открывает eGov Mobile при сканировании системной
+    // камерой (формат как у rekassa: isi/ibi/apn — App Store / bundle id / Android package)
+    const deeplink =
+      `https://m.egov.kz/mobileSign?link=${encodeURIComponent(mgovSignUrl)}` +
+      `&isi=1476128386&ibi=kz.egov.mobile&apn=kz.mobile.mgov`;
+
     return {
       session_id: id,
       token,
-      qr_content: `mobileSign:${RELAY_BASE_URL}/v1/egov/${id}/mgovSign`,
+      qr_content: `mobileSign:${mgovSignUrl}`,
+      deeplink,
       expires_at: expiresAt.toISOString(),
     };
   }
@@ -105,10 +113,10 @@ export class EgovStore {
     };
   }
 
-  putDocuments(
+  /** Проверки доступа/состояния ДО валидации подписи (401/404/409 раньше 403). */
+  checkPutPreconditions(
     id: string,
     token: string,
-    signedDocs: PutEgovDocumentsInput,
   ): { success: boolean; error?: string; statusCode?: number } {
     const session = this.sessions.get(id);
     if (!session) {
@@ -128,6 +136,18 @@ export class EgovStore {
       return { success: false, error: `Session already ${session.status}`, statusCode: 409 };
     }
 
+    return { success: true };
+  }
+
+  putDocuments(
+    id: string,
+    token: string,
+    signedDocs: PutEgovDocumentsInput,
+  ): { success: boolean; error?: string; statusCode?: number } {
+    const pre = this.checkPutPreconditions(id, token);
+    if (!pre.success) return pre;
+
+    const session = this.sessions.get(id)!;
     session.signedDocuments = signedDocs.documentsToSign;
     session.status = "completed";
     session.completedAt = new Date();
@@ -164,7 +184,10 @@ export class EgovStore {
   }
 
   private expireIfNeeded(session: EgovSession) {
-    if (session.status === "pending" && session.expiresAt < new Date()) {
+    if (
+      (session.status === "pending" || session.status === "scanned") &&
+      session.expiresAt < new Date()
+    ) {
       session.status = "expired";
     }
   }

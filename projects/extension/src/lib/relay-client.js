@@ -45,7 +45,9 @@ export function buildDeepLink(session, format) {
   const fmt = format || "cms";
   // Short URL (~75 chars) — fits in QR version 4 (capacity 78 bytes)
   // Web app fetches full session data from relay via GET /v1/sessions/:id/payload
-  return `${appUrl}/#/sign?s=${session.session_id}&f=${fmt}`;
+  // NOTE: no slash before # — "/app/" triggers a 308 redirect that mobile
+  // browsers cache permanently (caused a redirect loop in the field).
+  return `${appUrl}#/sign?s=${session.session_id}&f=${fmt}`;
 }
 
 export { RELAY_URL, POLL_INTERVAL_MS, MAX_POLLS };

@@ -10,3 +10,4 @@ dist/
 .pnpm-store/
 docs/bm_doo/
 docs/ncalayer_sdk/
+.next-build/

@@ -368,7 +368,7 @@ function HomePage() {
           </button>
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.7 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.8 — Мобильная ЭЦП</p>
       </div>
     </main>
   );
@@ -559,12 +559,19 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           addTrace("info", "raw GOST sign done", { sigLen: rawResult.signature.length, certLen: rawResult.certificate.length });
           result = { ...rawResult, signature: signedXml };
         } else {
-          const { signCMSWithGOST, signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
-          addTrace("info", "signCMSWithGOST call");
-          const cmsB64 = await signCMSWithGOST(p12File, p12Password, dataToSign, false);
-          addTrace("info", "signCMSWithGOST done", { cmsLen: cmsB64.length });
+          const { signWithGOST: signRawGOST } = await import("@/lib/crypto/signer");
+          addTrace("info", "signWithGOST call (CMS + CAdES-T attempt)");
+          // signWithGOST internally builds CMS and tries to upgrade it to CAdES-T
+          // via the TSA proxy; cmsSignature carries the timestamped version when
+          // the TSA was reachable, plain CAdES-BES otherwise.
           const rawResult = await signRawGOST(p12File, p12Password, dataToSign);
-          addTrace("info", "raw GOST sign done", { sigLen: rawResult.signature.length });
+          addTrace("info", "GOST sign done", {
+            sigLen: rawResult.signature.length,
+            cmsLen: rawResult.cmsSignature?.length || 0,
+            hasCades: !!rawResult.cmsSignature,
+          });
+          const cmsB64 = rawResult.cmsSignature
+            || (await (await import("@/lib/crypto/signer")).signCMSWithGOST(p12File, p12Password, dataToSign, false));
           result = { ...rawResult, signature: cmsB64, cmsSignature: cmsB64 };
         }
       } else {
@@ -604,7 +611,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const buildDebugReport = useCallback((): string => {
     const errInfo = state.status === "error" ? { friendly: state.message, raw: state.rawError, stack: state.stack } : null;
     const report = {
-      version: "2.0.7",
+      version: "2.0.8",
       time: new Date().toISOString(),
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "n/a",
       session: params.session,
@@ -861,7 +868,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           )}
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.7 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.8 — Мобильная ЭЦП</p>
       </div>
     </main>
   );

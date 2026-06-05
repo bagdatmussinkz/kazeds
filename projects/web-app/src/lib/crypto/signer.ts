@@ -82,10 +82,16 @@ export async function signWithGOST(
   };
 }
 
-const TSA_URL = "http://tsp.pki.gov.kz/tsp/";
+// TSA через nginx-прокси (браузер не может дёргать tsp.pki.gov.kz напрямую — CORS).
+// Production TSA first; test TSA (для тестовых сертификатов НУЦ из SDK) as fallback.
+const TSA_URLS = [
+  "https://sign.aitu.uz/relay/tsa/prod",
+  "https://sign.aitu.uz/relay/tsa/test",
+];
 
 /**
- * Sign CMS with CAdES-T timestamp (legally binding in KZ)
+ * Sign CMS with CAdES-T timestamp (legally binding in KZ).
+ * Falls back to CAdES-BES if no TSA is reachable.
  */
 export async function signCMSWithTimestamp(
   p12Base64: string,
@@ -98,27 +104,34 @@ export async function signCMSWithTimestamp(
   // Step 1: CMS signature (CAdES-BES)
   let cms = await wasm.signCMS(p12Base64, password, dataBase64, detached);
 
-  // Step 2: Build TSA request
+  // Step 2: Build TSA request (RFC 3161, hash of SignerInfo signature)
   try {
     const tsaReqB64 = await wasm.buildTSARequest(cms);
     const tsaReqBytes = Uint8Array.from(atob(tsaReqB64), c => c.charCodeAt(0));
 
-    // Step 3: Send to TSA
-    const resp = await fetch(TSA_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/timestamp-query" },
-      body: tsaReqBytes,
-    });
-
-    if (resp.ok) {
-      const tsaRespBuf = await resp.arrayBuffer();
-      const tsaRespB64 = bufferToBase64(tsaRespBuf);
-      // Step 4: Apply timestamp token
-      cms = await wasm.applyTSAResponse(cms, tsaRespB64);
-      console.log("[KazEDS] CAdES-T timestamp applied");
-    } else {
-      console.warn("[KazEDS] TSA failed, returning CAdES-BES:", resp.status);
+    // Step 3: Send to TSA — prod first, test fallback
+    for (const tsaUrl of TSA_URLS) {
+      try {
+        const resp = await fetch(tsaUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/timestamp-query" },
+          body: tsaReqBytes,
+        });
+        if (!resp.ok) {
+          console.warn("[KazEDS] TSA", tsaUrl, "HTTP", resp.status);
+          continue;
+        }
+        const tsaRespBuf = await resp.arrayBuffer();
+        const tsaRespB64 = bufferToBase64(tsaRespBuf);
+        // Step 4: Apply timestamp token → CAdES-T
+        cms = await wasm.applyTSAResponse(cms, tsaRespB64);
+        console.log("[KazEDS] CAdES-T timestamp applied via", tsaUrl);
+        return cms;
+      } catch (err) {
+        console.warn("[KazEDS] TSA", tsaUrl, "unreachable:", err);
+      }
     }
+    console.warn("[KazEDS] All TSA endpoints failed, returning CAdES-BES");
   } catch (err) {
     console.warn("[KazEDS] TSA timestamp failed, returning CAdES-BES:", err);
   }

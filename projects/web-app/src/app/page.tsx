@@ -368,7 +368,7 @@ function HomePage() {
           </button>
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.6 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.7 — Мобильная ЭЦП</p>
       </div>
     </main>
   );
@@ -394,7 +394,28 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
     setTraceLog((prev) => [...prev, ev]);
     const log = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
     log("[KazEDS trace]", `+${ev.ts}ms`, msg, data ?? "");
-  }, []);
+    // Remote tracing: ship event (with full payload) to the relay when enabled
+    // via localStorage kazeds_trace=1 or trace=true in the URL/hash.
+    try {
+      const remoteOn =
+        localStorage.getItem("kazeds_trace") === "1" ||
+        window.location.href.includes("trace=true");
+      if (remoteOn) {
+        fetch(`${RELAY_BASE}/trace`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: initialParams.session,
+            source: "web-app",
+            level,
+            msg,
+            data,
+            ts: new Date().toISOString(),
+          }),
+        }).catch(() => {});
+      }
+    } catch {}
+  }, [initialParams.session]);
 
   // Reset signing state when entering a new session (fresh QR scan after a previous success)
   useEffect(() => {
@@ -583,7 +604,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const buildDebugReport = useCallback((): string => {
     const errInfo = state.status === "error" ? { friendly: state.message, raw: state.rawError, stack: state.stack } : null;
     const report = {
-      version: "2.0.6",
+      version: "2.0.7",
       time: new Date().toISOString(),
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "n/a",
       session: params.session,
@@ -840,7 +861,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           )}
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.6 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.7 — Мобильная ЭЦП</p>
       </div>
     </main>
   );

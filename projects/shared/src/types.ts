@@ -169,3 +169,24 @@ export interface SigningHistoryEntry {
   status: "success" | "error" | "cancelled";
   timestamp: string;
 }
+
+// --- Distributed Tracing (опционально, включается trace=true) ---
+
+export type TraceSource =
+  | "extension-sw" // service worker (sign-flow, ncalayer-api)
+  | "extension-page" // ws-intercept / bridge (страница)
+  | "widget" // eds.js
+  | "web-app" // мобильная PWA
+  | "miniapp" // Aitu miniapp
+  | "demo-site"
+  | "relay";
+
+export interface TraceEvent {
+  session_id?: string; // привязка к сессии подписания, если есть
+  source: TraceSource;
+  level: "info" | "warn" | "error";
+  msg: string;
+  data?: unknown; // полный payload события (включается всегда при trace=true)
+  ts: string; // ISO 8601, проставляет отправитель
+  received_at?: string; // проставляет relay при приёме
+}

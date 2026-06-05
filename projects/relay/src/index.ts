@@ -4,8 +4,10 @@ import rateLimit from "@fastify/rate-limit";
 import { sessionRoutes } from "./routes/sessions";
 import { egovRoutes } from "./routes/egov";
 import { healthRoutes } from "./routes/health";
+import { traceRoutes } from "./routes/trace";
 import { SessionStore } from "./services/session-store";
 import { EgovStore } from "./services/egov-store";
+import { TraceStore } from "./services/trace-store";
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -34,13 +36,18 @@ async function main() {
   // In-memory eGov session store
   const egovStore = new EgovStore();
 
+  // In-memory trace buffer (debug tool, enabled client-side via trace=true)
+  const traceStore = new TraceStore();
+
   // Decorate fastify instance with stores
   app.decorate("sessionStore", sessionStore);
   app.decorate("egovStore", egovStore);
+  app.decorate("traceStore", traceStore);
 
   // Routes
   await app.register(sessionRoutes, { prefix: "/v1" });
   await app.register(egovRoutes, { prefix: "/v1" });
+  await app.register(traceRoutes, { prefix: "/v1" });
   await app.register(healthRoutes);
 
   // Start

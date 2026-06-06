@@ -53,6 +53,9 @@
       <link rel="stylesheet" href="${chrome.runtime.getURL("src/content/qr-overlay.css")}">
       <div class="overlay-backdrop">
         <div class="overlay-dialog">
+          <button class="qr-close" id="kazeds-cancel" aria-label="Закрыть">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
           <div class="qr-badge ${badgeClass}">${badgeText}</div>
           <p class="qr-title">Отсканируйте QR-код</p>
           <p class="qr-subtitle" id="kazeds-qr-hint">Откройте KazEDS на телефоне и наведите камеру</p>
@@ -84,9 +87,8 @@
             <div class="qr-spinner"></div>
             <span>Ожидание сканирования...</span>
           </div>
-          <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
           <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
-            <span>KazEDS v2.0.18</span>
+            <span>KazEDS v2.0.19</span>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
               <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
               trace

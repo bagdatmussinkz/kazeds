@@ -22,6 +22,7 @@
 .overlay-backdrop.visible { opacity: 1; }
 
 .overlay-dialog {
+  position: relative;
   background: #fff;
   border-radius: 20px;
   padding: 32px;
@@ -137,20 +138,26 @@
   to { transform: rotate(360deg); }
 }
 
-.qr-btn-cancel {
-  display: inline-block;
-  padding: 8px 24px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+.qr-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
   color: #64748b;
-  font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
 }
-.qr-btn-cancel:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+.qr-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  transform: rotate(90deg);
 }
 
 .qr-branding {

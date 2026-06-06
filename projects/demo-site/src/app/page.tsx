@@ -177,7 +177,7 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
               KazEDS Extension заменяет NCALayer — подписание происходит на вашем телефоне
             </p>
             <a
-              href="https://sign.aitu.uz/ext/eds_v2.0.18.zip"
+              href="https://sign.aitu.uz/ext/eds_v2.0.19.zip"
               download
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#009FDB] text-white rounded-xl font-medium
                 hover:bg-[#007FB8] transition-all duration-150 shadow-md shadow-blue-900/20 hover:shadow-lg mb-3"

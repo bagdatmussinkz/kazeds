@@ -67,7 +67,7 @@
               eGov Mobile
             </button>
           </div>` : ""}
-          <div class="qr-image-wrap" style="position:relative;display:inline-block">
+          <div class="qr-image-wrap">
             <img class="qr-image" id="kazeds-qr-img" src="${escapeHtml(data.qrImageUrl)}" width="280" height="280" alt="QR" />
             ${data.egov ? `
             <img id="kazeds-qr-logo" src="${chrome.runtime.getURL("icons/egov-logo.png")}" width="48" height="48" alt=""
@@ -86,7 +86,7 @@
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
           <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
-            <span>KazEDS v2.0.15</span>
+            <span>KazEDS v2.0.16</span>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
               <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
               trace

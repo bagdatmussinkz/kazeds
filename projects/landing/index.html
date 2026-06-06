@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KazEDS — Облачная замена NCALayer</title>
   <meta name="description" content="Цифровая подпись без установки NCALayer. eGov Mobile, локальная ЭЦП в браузере, Chrome-расширение и виджет в одну строку.">
-  <link rel="stylesheet" href="/brand.css">
+  <link rel="stylesheet" href="brand.css?v=18">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .gradient-text {
@@ -103,8 +103,12 @@
 
         <div id="kz-install" class="mt-4 hidden">
           <p class="text-amber-700/80 text-xs mb-3">Для теста нужно расширение KazEDS (эмулирует NCALayer)</p>
-          <a href="https://sign.aitu.uz/ext/eds_v2.0.18.zip" download
-             class="inline-block px-5 py-2 text-white text-sm rounded-lg brand-btn-primary">Скачать расширение</a>
+          <div class="flex items-center justify-center gap-2">
+            <a href="https://sign.aitu.uz/ext/eds_v2.0.18.crx" download
+               class="inline-block px-5 py-2 text-white text-sm rounded-lg brand-btn-primary">Скачать .crx</a>
+            <a href="https://sign.aitu.uz/ext/eds_v2.0.18.zip" download
+               class="inline-block px-5 py-2 text-slate-700 text-sm rounded-lg border border-slate-200 hover:bg-slate-50">.zip</a>
+          </div>
         </div>
       </div>
     </div>
@@ -282,9 +286,13 @@
         <pre class="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs overflow-x-auto"><code>&lt;script src="https://sign.aitu.uz/ext/eds.js"&gt;&lt;/script&gt;</code></pre>
       </div>
       <div class="flex flex-wrap items-center justify-center gap-3">
-        <a href="https://sign.aitu.uz/ext/eds_v2.0.18.zip" download
+        <a href="https://sign.aitu.uz/ext/eds_v2.0.18.crx" download
            class="px-6 py-3 bg-[var(--brand-primary)] text-white rounded-xl font-semibold hover:bg-[var(--brand-primary-dark)] transition shadow-md">
-          Скачать расширение
+          Скачать .crx
+        </a>
+        <a href="https://sign.aitu.uz/ext/eds_v2.0.18.zip" download
+           class="px-6 py-3 bg-white text-slate-700 rounded-xl font-semibold border border-slate-200 hover:bg-slate-50 transition">
+          Скачать .zip
         </a>
         <a href="https://github.com/bagdatmussinkz/kazeds" target="_blank" rel="noopener"
            class="px-6 py-3 bg-white text-slate-700 rounded-xl font-semibold border border-slate-200 hover:bg-slate-50 transition flex items-center gap-2">

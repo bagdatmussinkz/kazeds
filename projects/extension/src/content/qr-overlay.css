@@ -1,3 +1,10 @@
+:root {
+  --brand-primary: #067AB4;
+  --brand-primary-dark: #045A87;
+  --brand-bright: #00A8E0;
+  --brand-accent: #FF7200;
+}
+
 /* KazEDS QR Overlay Styles */
 .overlay-backdrop {
   position: fixed;
@@ -85,7 +92,7 @@
 }
 .qr-progress-bar {
   height: 100%;
-  background: #1F4E79;
+  background: var(--brand-bright);
   border-radius: 2px;
   transition: width 1s linear;
 }
@@ -117,7 +124,7 @@
   width: 16px;
   height: 16px;
   border: 2px solid #e2e8f0;
-  border-top-color: #1F4E79;
+  border-top-color: var(--brand-primary);
   border-radius: 50%;
   animation: kazeds-spin 0.8s linear infinite;
 }

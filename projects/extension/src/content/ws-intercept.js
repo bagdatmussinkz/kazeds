@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  const KAZEDS_VERSION = "2.0.16"; // kept in sync by the version bump sed
+  const KAZEDS_VERSION = "2.0.17"; // kept in sync by the version bump sed
   const INSTALL_FLAG = "__kazeds_ws_installed";
   if (window[INSTALL_FLAG]) return;
   window[INSTALL_FLAG] = true;

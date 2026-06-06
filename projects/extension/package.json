@@ -1,6 +1,6 @@
 {
   "name": "@kazeds/extension",
-  "version": "2.0.16",
+  "version": "2.0.17",
   "private": true,
   "scripts": {
     "build": "echo 'Extension build - copy files to dist/'",

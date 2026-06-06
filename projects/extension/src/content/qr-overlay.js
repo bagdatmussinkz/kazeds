@@ -60,7 +60,7 @@
           ${data.egov ? `
           <div style="display:flex;gap:6px;justify-content:center;margin:6px 0">
             <button id="kazeds-tab-kazeds" type="button"
-              style="padding:5px 14px;border-radius:8px;border:1px solid #067AB4;background:#067AB4;color:#fff;font-size:12px;cursor:pointer">KazEDS</button>
+              style="padding:5px 14px;border-radius:8px;border:1px solid #009FDB;background:#009FDB;color:#fff;font-size:12px;cursor:pointer">KazEDS</button>
             <button id="kazeds-tab-egov" type="button"
               style="display:flex;align-items:center;gap:6px;padding:5px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;cursor:pointer">
               <img src="${chrome.runtime.getURL("icons/egov-logo.png")}" width="16" height="16" alt="" style="border-radius:4px" />
@@ -86,7 +86,7 @@
           </div>
           <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
           <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
-            <span>KazEDS v2.0.17</span>
+            <span>KazEDS v2.0.18</span>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
               <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
               trace
@@ -121,12 +121,12 @@
         hint.textContent = egovMode
           ? "Откройте eGov Mobile → кнопка «eGov QR» → сканируйте"
           : "Откройте KazEDS на телефоне и наведите камеру";
-        tabK.style.background = egovMode ? "#fff" : "#067AB4";
+        tabK.style.background = egovMode ? "#fff" : "#009FDB";
         tabK.style.color = egovMode ? "#334155" : "#fff";
-        tabK.style.borderColor = egovMode ? "#cbd5e1" : "#067AB4";
-        tabE.style.background = egovMode ? "#067AB4" : "#fff";
+        tabK.style.borderColor = egovMode ? "#cbd5e1" : "#009FDB";
+        tabE.style.background = egovMode ? "#009FDB" : "#fff";
         tabE.style.color = egovMode ? "#fff" : "#334155";
-        tabE.style.borderColor = egovMode ? "#067AB4" : "#cbd5e1";
+        tabE.style.borderColor = egovMode ? "#009FDB" : "#cbd5e1";
       };
       tabK.addEventListener("click", () => setActive(false));
       tabE.addEventListener("click", () => setActive(true));

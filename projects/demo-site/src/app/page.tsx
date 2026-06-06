@@ -99,7 +99,7 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
         <div className="bg-white rounded-2xl shadow-lg shadow-blue-900/5 border border-slate-200/60 p-8 mb-6">
           {/* Logo */}
           <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-[#067AB4] rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-[#009FDB] rounded-xl flex items-center justify-center">
               <span className="text-white font-bold text-lg">K</span>
             </div>
             <div>
@@ -145,8 +145,8 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
             <button
               onClick={handleLogin}
               disabled={status !== "connected" || signing}
-              className="w-full py-3 px-6 bg-[#067AB4] text-white rounded-xl font-semibold text-base
-                disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#045A87] active:scale-[0.98]
+              className="w-full py-3 px-6 bg-[#009FDB] text-white rounded-xl font-semibold text-base
+                disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#007FB8] active:scale-[0.98]
                 transition-all duration-150 shadow-md shadow-blue-900/20 hover:shadow-lg hover:shadow-blue-900/25"
             >
               {signing ? (
@@ -177,10 +177,10 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
               KazEDS Extension заменяет NCALayer — подписание происходит на вашем телефоне
             </p>
             <a
-              href="https://sign.aitu.uz/ext/eds_v2.0.17.zip"
+              href="https://sign.aitu.uz/ext/eds_v2.0.18.zip"
               download
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#067AB4] text-white rounded-xl font-medium
-                hover:bg-[#045A87] transition-all duration-150 shadow-md shadow-blue-900/20 hover:shadow-lg mb-3"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#009FDB] text-white rounded-xl font-medium
+                hover:bg-[#007FB8] transition-all duration-150 shadow-md shadow-blue-900/20 hover:shadow-lg mb-3"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -196,7 +196,7 @@ function LoginPage({ onResult }: { onResult: (r: SigningResult) => void }) {
             </div>
             <a
               href="https://sign.aitu.uz"
-              className="text-[#067AB4] text-sm font-medium underline mt-3 inline-block"
+              className="text-[#009FDB] text-sm font-medium underline mt-3 inline-block"
             >
               Подробнее на sign.aitu.uz
             </a>
@@ -327,7 +327,7 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/60">
         <div className="max-w-2xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#067AB4] rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-[#009FDB] rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">K</span>
             </div>
             <span className="font-bold text-slate-800 text-sm">KazEDS Demo</span>
@@ -396,7 +396,7 @@ function DashboardPage({ result, onLogout }: { result: SigningResult; onLogout: 
             {result.certificate && (
               <button onClick={handleVerify}
                 disabled={verify?.status === "verifying"}
-                className="w-full py-3 bg-[#067AB4] text-white font-semibold rounded-xl hover:bg-[#045A87] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20 disabled:opacity-50">
+                className="w-full py-3 bg-[#009FDB] text-white font-semibold rounded-xl hover:bg-[#007FB8] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20 disabled:opacity-50">
                 {verify?.status === "verifying" ? (
                   <span className="inline-flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

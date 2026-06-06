@@ -5,9 +5,9 @@
 
 :root {
   /* Core */
-  --brand-primary:      #067AB4; /* основной (кнопки, заголовки, акценты) */
-  --brand-primary-dark: #045A87; /* hover/active */
-  --brand-bright:       #00A8E0; /* яркий голубой (бейджи, подсветка, градиент) */
+  --brand-primary:      #009FDB; /* основной (кнопки, заголовки, акценты) */
+  --brand-primary-dark: #007FB8; /* hover/active */
+  --brand-bright:       #2BB8EC; /* яркий голубой (бейджи, подсветка, градиент) */
   --brand-accent:       #FF7200; /* оранжевый CTA (важные действия) */
   --brand-accent-dark:  #E56600; /* hover оранжевого */
   --brand-ink:          #000000; /* текст/чёрный */

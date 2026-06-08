@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "KazEDS",
-  "description": "NCALayer replacement — sign with your phone via QR code",
+  "name": "KazEDS — ЭЦП без NCALayer",
+  "description": "Подпись ЭЦП без NCALayer: перехватывает запрос и подписывает на телефоне через eGov Mobile или вашей ЭЦП.",
   "version": "2.0.19",
+  "homepage_url": "https://sign.aitu.uz",
   "permissions": ["storage", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {

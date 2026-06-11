@@ -1,3 +1,10 @@
+:root {
+  --brand-primary: #009FDB;
+  --brand-primary-dark: #007FB8;
+  --brand-bright: #2BB8EC;
+  --brand-accent: #FF7200;
+}
+
 /* KazEDS QR Overlay Styles */
 .overlay-backdrop {
   position: fixed;
@@ -15,6 +22,7 @@
 .overlay-backdrop.visible { opacity: 1; }
 
 .overlay-dialog {
+  position: relative;
   background: #fff;
   border-radius: 20px;
   padding: 32px;
@@ -85,7 +93,7 @@
 }
 .qr-progress-bar {
   height: 100%;
-  background: #1F4E79;
+  background: var(--brand-bright);
   border-radius: 2px;
   transition: width 1s linear;
 }
@@ -117,7 +125,7 @@
   width: 16px;
   height: 16px;
   border: 2px solid #e2e8f0;
-  border-top-color: #1F4E79;
+  border-top-color: var(--brand-primary);
   border-radius: 50%;
   animation: kazeds-spin 0.8s linear infinite;
 }
@@ -130,20 +138,26 @@
   to { transform: rotate(360deg); }
 }
 
-.qr-btn-cancel {
-  display: inline-block;
-  padding: 8px 24px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+.qr-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
   color: #64748b;
-  font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
 }
-.qr-btn-cancel:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+.qr-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  transform: rotate(90deg);
 }
 
 .qr-branding {

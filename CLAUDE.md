@@ -60,7 +60,7 @@ pnpm dev:demo-site              # Demo on :3000
 pnpm lint                       # Lint all
 pnpm --filter @kazeds/web-app lint   # Lint one package
 
-pnpm test                       # Vitest run from root (149 tests across 10 files)
+pnpm test                       # Vitest run from root (159 tests across 11 files)
 pnpm vitest run <path>          # Run a single test file
 pnpm vitest run -t "name"       # Run a single test by name
 
@@ -80,7 +80,7 @@ Vitest is configured at the repo root (`vitest.config.ts`, `globals: true`). Tes
 - `projects/shared/src/__tests__/constants.test.ts`
 - `projects/relay/src/__tests__/{session-store,session-schema,routes,e2e-signing-flow,egov}.test.ts`
 - `projects/web-app/src/__tests__/{qr-parser,relay-client,key-manager}.test.ts`
-- `projects/extension/src/__tests__/ncalayer-handler.test.mjs`
+- `projects/extension/src/__tests__/x509.test.mjs`
 
 `e2e-signing-flow.test.ts` re-registers the Fastify routes inline rather than importing the real server — keep both in sync when adding endpoints.
 

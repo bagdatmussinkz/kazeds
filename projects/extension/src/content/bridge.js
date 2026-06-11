@@ -9,6 +9,13 @@
     try { window.__kazedsBridgeCleanup(); } catch {}
   }
 
+  try {
+    console.log(
+      `%c[KAZEDS][bridge] KazEDS extension v${chrome.runtime.getManifest().version}`,
+      "color: #1F4E79; font-weight: bold;",
+    );
+  } catch {}
+
   function protocolErrorForPayload(_payload, message) {
     return { code: "500", message };
   }

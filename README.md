@@ -1,24 +1,86 @@
 # KazEDS — Облачная замена NCALayer
 
-Цифровая подпись через мобильное устройство. Сайты используют стандартный `ncalayer-js-client` — KazEDS перехватывает WebSocket и подписывает на телефоне.
+Цифровая подпись без установки NCALayer. Сайты используют стандартный `ncalayer-js-client` — KazEDS перехватывает WebSocket и подписывает на телефоне: через **официальный eGov Mobile** или собственную PWA.
 
-## Архитектура
+## Возможности
+
+| Фича | Что даёт |
+|------|----------|
+| **eGov QR (egovQR)** | Подписание через официальное приложение eGov Mobile — сканируешь QR (формат `mobileSign:`) или жмёшь deeplink, подписываешь штатной ЭЦП. Домен `sign.aitu.uz` в whitelist eGov |
+| **Локальное подписание в PWA** | Свой `.p12` НУЦ РК загружается в мобильную PWA (`sign.aitu.uz/app`) — ГОСТ-подпись прямо в браузере телефона (Go→WASM), ключ не покидает устройство |
+| **Chrome Extension** | Эмулирует NCALayer для любого сайта: ничего не меняется на стороне сайта, QR-оверлей с табами «eGov Mobile / KazEDS» |
+| **JS-виджет** | Одна строка `<script src="https://sign.aitu.uz/ext/eds.js">` — то же самое без установки расширения |
+| **CAdES-T** | Метка времени RFC 3161 от боевого TSA НУЦ РК — юридически значимая подпись |
+| **Верификация** | Java-верифаер (BouncyCastle + Kalkan): криптопроверка ГОСТ CMS + валидация цепочки до корня НУЦ |
+| **Трейсинг** | Сквозной trace всех компонентов с полными payload (`/v1/trace`), тогглы прямо в QR-оверлее и PWA |
+
+## Как это работает
+
+### Перехват NCALayer (главный трюк)
+
+Сайты (eGov, kazpatent, damubala…) общаются с NCALayer через WebSocket `wss://127.0.0.1:13579`. KazEDS не поднимает локальный сервер — он **подменяет сам класс `WebSocket`** на странице:
+
+1. **`ws-intercept.js`** инжектится в **MAIN world** страницы при `document_start` и monkey-patch-ит `window.WebSocket`. Конструктор с URL `127.0.0.1:13579` возвращает `FakeWebSocket` — полную имитацию: `readyState`, события `open/message/close`, эмуляция heartbeat (`--heartbeat--`) и keepalive (`{}`). Любой другой URL прозрачно уходит в оригинальный `WebSocket`.
+2. Сайт шлёт обычный NCALayer JSON-RPC (`{module, method, args}`) в «сокет» → `FakeWebSocket.send()` переправляет его через `window.postMessage`.
+3. **`bridge.js`** (ISOLATED world) ловит сообщение и пересылает в service worker через `chrome.runtime.sendMessage`.
+4. **Service worker** диспатчит по модулям — `kz.gov.pki.knca.commonUtils` (массив-аргументы), `kz.gov.pki.knca.basics` (объект), `NURSign`, KNP — и для подписи запускает flow:
+   - создаёт **две** сессии в Cloud Relay: KazEDS и eGov;
+   - показывает QR-оверлей (Shadow DOM) с табами «eGov Mobile | KazEDS»;
+   - поллит обе сессии — выигрывает та, где юзер подписал.
+5. Подпись возвращается тем же путём назад и «выстреливает» в страницу как обычное `message`-событие WebSocket. Сайт не отличает KazEDS от настоящего NCALayer.
+
+### Два пути подписания
 
 ```
-Сайт (eGov и др.)
-  │  ncalayer-js-client → wss://127.0.0.1:13579
-  ▼
-KazEDS Widget / Chrome Extension
-  │  Перехватывает WebSocket, создаёт сессию
-  ▼
-Cloud Relay (Fastify API)
-  │  Хранит сессии, поллинг статуса
-  ▼
-Мобильное приложение (PWA)
-  │  Сканирует QR, подписывает Web Crypto API
-  ▼
-Результат возвращается на сайт
+                          ┌────────────── eGov Mobile ──────────────┐
+Сайт → Extension/Widget → │ QR mobileSign: → API №1/№2 → ЭЦП в eGov │ → PUT
+  ncalayer-js-client      └─────────────────────────────────────────┘     ↓
+        ↓ WS                                                        Cloud Relay
+  FakeWebSocket           ┌────────────── KazEDS PWA ───────────────┐     ↓
+        ↑                 │ QR → sign.aitu.uz/app → .p12 + WASM ГОСТ│ → POST
+        └──── результат ← └─────────────────────────────────────────┘
 ```
+
+В PWA, открытой по QR, тоже есть кнопка **«Подписать в eGov Mobile»** (deeplink) — если телефон один и тот же, можно прыгнуть в eGov не сканируя второй раз.
+
+### Архитектура (диаграмма)
+
+```mermaid
+sequenceDiagram
+    participant Site as Сайт (ncalayer-js-client)
+    participant Ext as Extension / Widget
+    participant Relay as Cloud Relay
+    participant eGov as eGov Mobile
+    participant PWA as KazEDS PWA (телефон)
+
+    Site->>Ext: WebSocket wss://127.0.0.1:13579 (перехвачен)
+    Ext->>Relay: POST /v1/sessions (KazEDS) + POST /v1/egov/sessions
+    Ext->>Site: QR-оверлей (табы eGov | KazEDS)
+    alt Подписание через eGov Mobile
+        eGov->>Relay: GET mgovSign (API №1) → GET documents (API №2)
+        eGov->>eGov: Подпись штатной ЭЦП
+        eGov->>Relay: PUT signed documents (валидация → 200/403)
+    else Подписание через KazEDS PWA
+        PWA->>Relay: GET /sessions/:id/payload
+        PWA->>PWA: ГОСТ-подпись (crypto.wasm) + CAdES-T (TSA НУЦ)
+        PWA->>Relay: POST /sessions/:id/complete
+    end
+    Ext->>Relay: поллинг обеих сессий (2с)
+    Ext->>Site: результат как WS message — сайт думает, что это NCALayer
+```
+
+### Как crypto.wasm делает ГОСТ-подпись
+
+Движок — Go, скомпилированный в WebAssembly (~7 МБ, грузится лениво при первом ГОСТ-подписании). Шаги внутри `wasmSignCMS`:
+
+1. **PKCS#12 parse** — `.p12` расшифровывается паролем (PBE), достаются приватный ключ ГОСТ Р 34.10-2015 (256/512, национальная кривая KZ `1.2.398.3.10.1.1.2.2.1`) и цепочка сертификатов.
+2. **Хеш** — данные хешируются ГОСТ Р 34.11-2015 («Стрибог», 256/512).
+3. **SignedAttributes** — формируются CAdES-BES атрибуты: `contentType`, `messageDigest`, `signingTime`, `signingCertificateV2`.
+4. **Подпись** — ГОСТ 34.10-2015 по DER-кодированным signedAttrs; собирается CMS/PKCS#7 (attached или detached).
+5. **CAdES-T** — `wasmBuildTSARequest` строит RFC 3161-запрос (хеш значения подписи), он уходит на TSA НУЦ РК через прокси `/relay/tsa/prod` (браузер не может напрямую — CORS); `wasmApplyTSAResponse` встраивает timestampToken как unsigned-атрибут. Если TSA недоступен — остаётся CAdES-BES.
+6. Для `signXml` тот же ключ создаёт **enveloped XMLDSig** (`wasmSignXML`).
+
+Приватный ключ существует в памяти WASM только на время операции; в хранилище (IndexedDB) лежит зашифрованным AES-256-GCM с ключом из PIN (PBKDF2, 600k итераций).
 
 ## Как работает подпись
 
@@ -255,7 +317,7 @@ curl -X POST https://sign.aitu.uz/relay/v1/sessions \
 docker run --rm -v $(pwd):/app -w /app node:22-alpine sh -c "corepack enable && pnpm test"
 ```
 
-**133 теста** across 10 файлов:
+**159 тестов** across 11 файлов:
 
 | Компонент | Файл | Тестов |
 |-----------|------|--------|
@@ -267,7 +329,7 @@ docker run --rm -v $(pwd):/app -w /app node:22-alpine sh -c "corepack enable && 
 | Web App | `qr-parser.test.ts` | 11 |
 | Web App | `relay-client.test.ts` | 5 |
 | Web App | `key-manager.test.ts` | 23 |
-| Extension | `ncalayer-handler.test.mjs` | 16 |
+| Extension | `x509.test.mjs` | 6 |
 
 ## Структура проекта
 
@@ -301,6 +363,15 @@ docker run --rm -v $(pwd):/app -w /app node:22-alpine \
 ```
 
 Установка: `chrome://extensions` → Режим разработчика → Загрузить распакованное расширение → выбрать `projects/extension/`.
+
+## Роадмап / TODO
+
+- [ ] **Share подписи** — поделиться результатом подписания ссылкой (чат/мессенджер), получатель открывает и верифицирует
+- [ ] **Safari extension (iOS/macOS)** — порт расширения под Safari App Extension
+- [ ] **Firefox extension** — порт под WebExtensions/Gecko
+- [ ] **Подписание `.p12`-файлом внутри Chrome-расширения** — альтернатива, когда ключ лежит на компе: без телефона и PWA
+- [ ] OCSP/CRL revocation-check в верифаере (negative-фикстуры уже в репо)
+- [ ] XMLDSig-верификация в Java-верифаере
 
 ## Остановка сервисов
 

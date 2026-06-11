@@ -51,3 +51,50 @@ export function buildDeepLink(session, format) {
 }
 
 export { RELAY_URL, POLL_INTERVAL_MS, MAX_POLLS };
+
+// ============ eGov Mobile (egovQR) ============
+
+/**
+ * Create an eGov signing session. eGov Mobile will fetch mgovSign (API №1),
+ * then documents (API №2 GET), sign, and PUT the signed documents back.
+ * @returns {Promise<{session_id, qr_content, deeplink, expires_at}>}
+ */
+export async function createEgovSession(origin, signMethod, documentsToSign, description) {
+  const resp = await fetch(`${RELAY_URL}/egov/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      description: description || `Подписание на ${origin}`,
+      organisation: { nameRu: origin, bin: "000000000000" },
+      signMethod,
+      documentsToSign,
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.message || `Relay egov error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function pollEgovStatus(sessionId, signal) {
+  const resp = await fetch(`${RELAY_URL}/egov/${sessionId}/status`, { signal });
+  if (!resp.ok) {
+    if (resp.status === 404) throw new Error("Session expired");
+    throw new Error(`Relay egov poll error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+/** Привязать egov-deeplink к основной сессии (PWA покажет кнопку eGov Mobile). */
+export async function linkEgovToSession(sessionId, deeplink) {
+  try {
+    await fetch(`${RELAY_URL}/sessions/${sessionId}/egov`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deeplink }),
+    });
+  } catch {
+    // best-effort
+  }
+}

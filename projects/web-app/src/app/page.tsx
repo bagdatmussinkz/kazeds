@@ -15,6 +15,7 @@ interface SignParams {
   op: "sign" | "auth" | "signxml";
   fmt: string; // "cms" | "xml"
   needsFetch?: boolean; // true when using short QR URL — must fetch from relay
+  egovDeeplink?: string; // парная egov-сессия — кнопка «Подписать в eGov Mobile»
 }
 
 type Route = { page: "home" } | { page: "sign"; params: SignParams };
@@ -265,7 +266,7 @@ function HomePage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-[#1F4E79] rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-900/20">
+          <div className="w-16 h-16 bg-[var(--brand-primary)] rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-900/20">
             <span className="text-white font-bold text-2xl">K</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-800">KazEDS</h1>
@@ -287,8 +288,8 @@ function HomePage() {
             </div>
           ) : (
             <button onClick={startScanner}
-              className="w-full flex items-center gap-4 p-4 bg-[#1F4E79] text-white rounded-xl
-                hover:bg-[#163d5e] active:scale-[0.98] transition-all duration-150
+              className="w-full flex items-center gap-4 p-4 bg-[var(--brand-primary)] text-white rounded-xl
+                hover:bg-[var(--brand-primary-dark)] active:scale-[0.98] transition-all duration-150
                 shadow-md shadow-blue-900/20">
               <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -368,7 +369,7 @@ function HomePage() {
           </button>
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.9 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.12 — Мобильная ЭЦП</p>
       </div>
     </main>
   );
@@ -459,6 +460,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           data: payload.data || "",
           op: initialParams.op,
           fmt: initialParams.fmt,
+          egovDeeplink: payload.egov_deeplink || undefined,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to load session";
@@ -621,7 +623,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
   const buildDebugReport = useCallback((): string => {
     const errInfo = state.status === "error" ? { friendly: state.message, raw: state.rawError, stack: state.stack } : null;
     const report = {
-      version: "2.0.9",
+      version: "2.0.12",
       time: new Date().toISOString(),
       userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "n/a",
       session: params.session,
@@ -658,7 +660,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-14 h-14 bg-[#1F4E79] rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-blue-900/20">
+          <div className="w-14 h-14 bg-[var(--brand-primary)] rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-blue-900/20">
             <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
             </svg>
@@ -723,7 +725,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
 
           {loading && (
             <div className="flex flex-col items-center py-6 gap-3">
-              <div className="w-8 h-8 border-2 border-[#1F4E79] border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-slate-500">Загрузка данных сессии...</p>
             </div>
           )}
@@ -734,12 +736,22 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           )}
           {!loading && !fetchError && state.status === "idle" && (
             <div className="space-y-3">
+              {params.egovDeeplink && (
+                <a
+                  href={params.egovDeeplink}
+                  className="w-full flex items-center justify-center gap-2.5 py-3 bg-[#2456E5] text-white font-semibold rounded-xl hover:bg-[#1d47c4] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/app/icons/egov-logo.png" alt="" width={22} height={22} className="rounded-md" />
+                  Подписать в eGov Mobile
+                </a>
+              )}
               {/* Method selector */}
               <div className="flex gap-2">
                 <button onClick={() => setMethod("ECDSA")}
                   className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
                     method === "ECDSA"
-                      ? "bg-[#1F4E79] text-white shadow-sm"
+                      ? "bg-[var(--brand-primary)] text-white shadow-sm"
                       : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                   }`}>
                   ECDSA P-256
@@ -747,7 +759,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
                 <button onClick={() => setMethod("GOST")}
                   className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
                     method === "GOST"
-                      ? "bg-[#1F4E79] text-white shadow-sm"
+                      ? "bg-[var(--brand-primary)] text-white shadow-sm"
                       : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                   }`}>
                   ГОСТ (ЭЦП .p12)
@@ -759,7 +771,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
                 <div className="space-y-2 bg-slate-50 rounded-lg p-3">
                   <input type="file" ref={fileInputRef} accept=".p12,.pfx" onChange={handleFileSelect} className="hidden" />
                   <button onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-2.5 text-sm border border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-[#1F4E79] hover:text-[#1F4E79] transition">
+                    className="w-full py-2.5 text-sm border border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition">
                     {p12FileName || "Выбрать .p12 файл"}
                   </button>
                   <input
@@ -767,14 +779,14 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
                     placeholder="Пароль от ЭЦП"
                     value={p12Password}
                     onChange={(e) => setP12Password(e.target.value)}
-                    className="w-full py-2.5 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F4E79]/20 focus:border-[#1F4E79]"
+                    className="w-full py-2.5 px-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]/25 focus:border-[var(--brand-primary)]"
                   />
                 </div>
               )}
 
               <button onClick={handleSign}
                 disabled={method === "GOST" && (!p12File || !p12Password)}
-                className="w-full py-3.5 bg-[#1F4E79] text-white font-semibold rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20 disabled:opacity-30 disabled:cursor-not-allowed">
+                className="w-full py-3.5 bg-[var(--brand-primary)] text-white font-semibold rounded-xl hover:bg-[var(--brand-primary-dark)] active:scale-[0.98] transition-all duration-150 shadow-md shadow-blue-900/20 disabled:opacity-30 disabled:cursor-not-allowed">
                 {method === "GOST" ? "Подписать (ГОСТ)" : "Подписать (ECDSA)"}
               </button>
               <button onClick={() => { window.location.hash = ""; }}
@@ -785,7 +797,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           )}
           {state.status === "signing" && (
             <div className="flex flex-col items-center py-4 gap-3">
-              <div className="w-8 h-8 border-2 border-[#1F4E79] border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-slate-500">Подписание...</p>
             </div>
           )}
@@ -800,7 +812,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
               <div className="flex gap-2">
                 <button onClick={handleVerify}
                   disabled={verifyState === "verifying"}
-                  className="px-5 py-2 bg-[#1F4E79] text-white text-sm font-medium rounded-xl hover:bg-[#163d5e] active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
+                  className="px-5 py-2 bg-[var(--brand-primary)] text-white text-sm font-medium rounded-xl hover:bg-[var(--brand-primary-dark)] active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
                   {verifyState === "verifying" ? "Проверка..." : "Проверить"}
                 </button>
                 <button onClick={() => { window.location.hash = ""; }}
@@ -902,7 +914,7 @@ function SigningPage({ params: initialParams }: { params: SignParams }) {
           )}
         </div>
 
-        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.9 — Мобильная ЭЦП</p>
+        <p className="text-center text-slate-300 text-xs mt-6">KazEDS v2.0.12 — Мобильная ЭЦП</p>
       </div>
     </main>
   );

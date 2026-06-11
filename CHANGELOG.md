@@ -3,7 +3,72 @@
 Формат вдохновлён [Keep a Changelog](https://keepachangelog.com/ru/).
 Версии указаны по компонентам: Extension (chrome), Web App (PWA), Relay/Shared.
 
-## [Unreleased] — ветка `feature/aitu-miniapp`
+## [Unreleased] — ветка `feature/egovqr`
+
+### Extension 2.0.17 · Web App 2.0.11 · Relay 0.4.1
+
+**Added**
+- **Единая бренд-палитра** (`brand.css`, формат AT&T): `--brand-primary
+  #067AB4`, `--brand-bright #00A8E0`, `--brand-accent #FF7200`,
+  `--brand-ink #000000` + градиент. Применена в лендинге, PWA (`@import`)
+  и QR-оверлее расширения; demo-site тоже перекрашен.
+- **Живой тест на лендинге** — секция «Проверить сейчас»: детект
+  расширения (`__KAZEDS_INSTALLED__`), кнопка «Войти по ЭЦП» открывает
+  настоящий NCALayer-флоу прямо на странице (расширение перехватывает
+  `wss://127.0.0.1:13579`, показывает QR-оверлей). Отдельный demo-сайт
+  больше не нужен — лендинг сам себя демонстрирует.
+
+**Fixed**
+- QR-код в оверлее снова центрирован (инлайн `display:inline-block` ломал
+  центрирование из CSS-класса).
+
+### Extension 2.0.15 · Web App 2.0.10 · Relay 0.4.1 (промежуточные)
+
+**Added**
+- eGov Mobile — **таб по умолчанию** в QR-оверлее, лого eGov в кнопке и
+  по центру QR-кода (ECC H выдерживает оверлей лого).
+- QR-оверлей для **auth-флоу** (getKeyInfo) тоже создаёт egov-сессию —
+  подпись challenge-XML, сертификат из `ds:X509Certificate`.
+- **Кнопка «Подписать в eGov Mobile»** в PWA: extension линкует egov-deeplink
+  к основной сессии (`PATCH /v1/sessions/:id/egov`), `/payload` отдаёт
+  `egov_deeplink`, PWA показывает кнопку с лого над табами ECDSA/GOST.
+- Версия расширения в консольных логах (`ws-intercept`, `bridge`).
+- README: секции «Возможности», «Как это работает» (детально про перехват
+  NCALayer + WASM-подпись), mermaid-диаграмма, «Роадмап/TODO».
+- Лендинг: промо-редизайн (боли NCALayer, фичи, архитектурная схема,
+  удобство/риски, ссылка на GitHub); секция WiFi удалена.
+
+**Fixed**
+- Исключены stale-копии тестов из `dist/` в vitest; честный счёт 159/159.
+- egov QR кодирует спековый `mobileSign:` (не https-deeplink — тот остался
+  ссылкой под QR для системной камеры).
+
+### Extension 2.0.11 · Relay 0.4.0
+
+**Added**
+- **Подписание через официальный eGov Mobile (egovQR)** — домен
+  `sign.aitu.uz` включён в whitelist eGov:
+  - Расширение для sign-операций создаёт **две** сессии параллельно:
+    KazEDS PWA и eGov; QR-оверлей получил табы «KazEDS | eGov Mobile»;
+    поллинг обеих, побеждает первая завершённая.
+  - eGov-QR — universal deeplink `https://m.egov.kz/mobileSign?link=…`
+    (формат rekassa): системная камера телефона открывает eGov Mobile.
+  - Relay: API №1 `mgovSign` / API №2 GET+PUT по спеке eGovQR; в ответе
+    create добавлен `deeplink`.
+  - **Валидация подписи в PUT (шаг 8 спеки)**: XML — структурная проверка
+    XMLDSig; CMS — криптографическая через Java verifier; невалидная
+    подпись → `403`, успех → `200 "success"`.
+  - eGov-сессии в `scanned` теперь истекают по TTL (тот же фикс, что и
+    для основных сессий); полный trace lifecycle egov-сессий.
+- Маппинг результата eGov → NCALayer: XML — подписанный `documentXml` +
+  сертификат из `ds:X509Certificate`; CMS — `file.data` как
+  `cmsSignature`.
+
+**Tests**: 270 (35 egov, включая e2e-эмуляцию eGov Mobile curl-ом:
+create → mgovSign → documents → PUT(мусор)=403 → PUT(реальная GOST CMS)=200
+→ status=completed).
+
+## [merged] — ветка `feature/aitu-miniapp`
 
 ### Extension 2.0.10 · Web App 2.0.9
 

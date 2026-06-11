@@ -53,22 +53,42 @@
       <link rel="stylesheet" href="${chrome.runtime.getURL("src/content/qr-overlay.css")}">
       <div class="overlay-backdrop">
         <div class="overlay-dialog">
+          <button class="qr-close" id="kazeds-cancel" aria-label="Закрыть">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
           <div class="qr-badge ${badgeClass}">${badgeText}</div>
           <p class="qr-title">Отсканируйте QR-код</p>
-          <p class="qr-subtitle">Откройте KazEDS на телефоне и наведите камеру</p>
+          <p class="qr-subtitle" id="kazeds-qr-hint">Откройте KazEDS на телефоне и наведите камеру</p>
           <div class="qr-domain">${escapeHtml(data.domain || "")}</div>
+          ${data.egov ? `
+          <div style="display:flex;gap:6px;justify-content:center;margin:6px 0">
+            <button id="kazeds-tab-kazeds" type="button"
+              style="padding:5px 14px;border-radius:8px;border:1px solid #009FDB;background:#009FDB;color:#fff;font-size:12px;cursor:pointer">KazEDS</button>
+            <button id="kazeds-tab-egov" type="button"
+              style="display:flex;align-items:center;gap:6px;padding:5px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:12px;cursor:pointer">
+              <img src="${chrome.runtime.getURL("icons/egov-logo.png")}" width="16" height="16" alt="" style="border-radius:4px" />
+              eGov Mobile
+            </button>
+          </div>` : ""}
           <div class="qr-image-wrap">
-            <img class="qr-image" src="${escapeHtml(data.qrImageUrl)}" width="280" height="280" alt="QR" />
+            <img class="qr-image" id="kazeds-qr-img" src="${escapeHtml(data.qrImageUrl)}" width="280" height="280" alt="QR" />
+            ${data.egov ? `
+            <img id="kazeds-qr-logo" src="${chrome.runtime.getURL("icons/egov-logo.png")}" width="48" height="48" alt=""
+              style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:10px;background:#fff;padding:3px;box-shadow:0 0 0 2px #fff" />` : ""}
           </div>
+          ${data.egov && data.egov.deeplink ? `
+          <a id="kazeds-egov-deeplink" href="${escapeHtml(data.egov.deeplink)}" target="_blank" rel="noopener"
+             style="display:none;font-size:11px;color:#3b82f6;text-decoration:underline;margin-top:4px">
+            или открыть deeplink в eGov Mobile ↗
+          </a>` : ""}
           <div class="qr-progress"><div class="qr-progress-bar" id="kazeds-bar" style="width:100%"></div></div>
           <div class="qr-countdown">Осталось <strong id="kazeds-countdown">${Math.floor(totalMs / 1000)}</strong> сек</div>
           <div class="qr-status" id="kazeds-status">
             <div class="qr-spinner"></div>
             <span>Ожидание сканирования...</span>
           </div>
-          <button class="qr-btn-cancel" id="kazeds-cancel">Отмена</button>
           <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
-            <span>KazEDS v2.0.10</span>
+            <span>KazEDS v2.0.20</span>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
               <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
               trace
@@ -87,6 +107,33 @@
       chrome.runtime.sendMessage({ type: "kazeds-cancel-flow", sessionId: currentSessionId });
       removeOverlay();
     });
+
+    // QR mode tabs: KazEDS PWA ⇄ eGov Mobile (both sessions polled in parallel)
+    if (data.egov) {
+      const img = shadow.getElementById("kazeds-qr-img");
+      const hint = shadow.getElementById("kazeds-qr-hint");
+      const tabK = shadow.getElementById("kazeds-tab-kazeds");
+      const tabE = shadow.getElementById("kazeds-tab-egov");
+      const dl = shadow.getElementById("kazeds-egov-deeplink");
+      const logo = shadow.getElementById("kazeds-qr-logo");
+      const setActive = (egovMode) => {
+        if (dl) dl.style.display = egovMode ? "inline" : "none";
+        if (logo) logo.style.display = egovMode ? "block" : "none";
+        img.src = egovMode ? data.egov.qrImageUrl : data.qrImageUrl;
+        hint.textContent = egovMode
+          ? "Откройте eGov Mobile → кнопка «eGov QR» → сканируйте"
+          : "Откройте KazEDS на телефоне и наведите камеру";
+        tabK.style.background = egovMode ? "#fff" : "#009FDB";
+        tabK.style.color = egovMode ? "#334155" : "#fff";
+        tabK.style.borderColor = egovMode ? "#cbd5e1" : "#009FDB";
+        tabE.style.background = egovMode ? "#009FDB" : "#fff";
+        tabE.style.color = egovMode ? "#fff" : "#334155";
+        tabE.style.borderColor = egovMode ? "#009FDB" : "#cbd5e1";
+      };
+      tabK.addEventListener("click", () => setActive(false));
+      tabE.addEventListener("click", () => setActive(true));
+      setActive(true); // eGov Mobile — таб по умолчанию
+    }
 
     // Trace toggle → service worker → chrome.storage (info-level events on/off)
     const traceToggle = shadow.getElementById("kazeds-trace-toggle");

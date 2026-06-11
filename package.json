@@ -11,7 +11,7 @@
     "build:web-app": "pnpm --filter @kazeds/web-app build",
     "build:demo-site": "pnpm --filter @kazeds/demo-site build",
     "lint": "pnpm -r lint",
-    "pack:extension": "cd projects/extension && VERSION=$(node -p \"require('./manifest.json').version\") && FNAME=eds_v${VERSION}.zip && rm -f eds_v*.zip && zip -r $FNAME . -x '*.DS_Store' -x 'src/__tests__/*' -x '*.zip' -x 'node_modules/*' && echo \"Packed: $FNAME\"",
+    "pack:extension": "bash scripts/pack-extension.sh",
     "clean": "pnpm -r clean",
     "test": "vitest run"
   },

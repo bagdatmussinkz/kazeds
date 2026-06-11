@@ -382,13 +382,43 @@ const knpCommands = {
     return knpResult(requestId, "ERROR");
   },
 
+  // KNP/SONO uses a site-driven UI: getCertificates feeds the site's own cert
+  // picker. KazEDS signs on the phone (no key in the extension), so we return a
+  // single virtual "remote" certificate — the site shows it, the user picks it,
+  // and the real signing happens via the QR flow in signDocument. The actual
+  // signer certificate comes back in the signature result.
+  getCertificates(request) {
+    const requestId = request?.requestId ?? null;
+    const farFuture = new Date(Date.now() + 5 * 365 * 24 * 3600 * 1000).toISOString();
+    return knpResult(requestId, "OK", {
+      certificates: [
+        {
+          alias: "kazeds-remote",
+          serialNumber: "kazeds-remote",
+          subjectCn: "KazEDS — подпись на телефоне",
+          subjectDn: "CN=KazEDS — подпись на телефоне,O=KazEDS",
+          issuerCn: "KazEDS Cloud",
+          issuerDn: "CN=KazEDS Cloud",
+          notBefore: new Date().toISOString(),
+          notAfter: farFuture,
+          keyUsage: "sign",
+          storageName: "PKCS12",
+          remote: true,
+        },
+      ],
+    });
+  },
+
   async signDocument(request, senderInfo) {
     const requestId = request?.requestId ?? null;
-    if (request?.storageType !== "PKCS12") {
+    // Storage type may arrive as `storageType` or `type`; KazEDS only handles
+    // software certs (the actual key lives on the phone, not in a token).
+    const storage = request?.storageType ?? request?.type;
+    if (storage && storage !== "PKCS12") {
       return knpCryptoError(requestId, "TOKEN_NOT_AVAILABLE");
     }
     try {
-      const xml = request?.xml || "";
+      const xml = request?.xml || request?.xmlToSign || request?.data || "";
       const xmlBase64 = btoa(unescape(encodeURIComponent(xml)));
       const result = await executeSignFlow(senderInfo, "sign", xmlBase64, "xml");
       return knpResult(requestId, "OK", { signedXml: result.signedDocument || result.signature });

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KazEDS — Политика конфиденциальности</title>
+  <link rel="stylesheet" href="brand.css?v=19">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:'Inter',sans-serif;background:#06080f;color:#e8edf5;margin:0;line-height:1.7}
+    .wrap{max-width:760px;margin:0 auto;padding:64px 24px 96px}
+    h1{font-size:2rem;margin-bottom:.25rem}
+    h2{font-size:1.15rem;margin-top:2.2rem;color:#fff}
+    p,li{color:#aeb9c8}
+    a{color:#22D3EE}
+    .muted{color:#6b7686;font-size:.9rem}
+    code{font-family:ui-monospace,monospace;background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;color:#cdd6e3}
+    .ok{color:#6ee7b7}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Политика конфиденциальности — KazEDS</h1>
+    <p class="muted">Последнее обновление: 8 июня 2026 г.</p>
+
+    <p>KazEDS — расширение Chrome, которое заменяет десктопное приложение NCALayer: перехватывает запрос на электронную цифровую подпись (ЭЦП) в браузере и передаёт его на подпись на мобильное устройство (через приложение eGov Mobile или мобильную PWA KazEDS).</p>
+
+    <h2>1. Единственное назначение</h2>
+    <p>Расширение служит одной цели: эмулировать локальный API NCALayer (<code>wss://127.0.0.1:13579</code>), чтобы сайты, использующие электронную подпись, работали без установки NCALayer, а подписание происходило на телефоне пользователя.</p>
+
+    <h2>2. Что мы НЕ собираем</h2>
+    <ul>
+      <li class="ok">Приватные ключи ЭЦП. Ключ (<code>.p12</code>) никогда не передаётся расширению или на сервер — подписание выполняется на устройстве пользователя.</li>
+      <li class="ok">Пароли, PIN-коды, персональные данные.</li>
+      <li class="ok">История просмотров, содержимое страниц, аналитика, рекламные идентификаторы.</li>
+    </ul>
+
+    <h2>3. Какие данные обрабатываются</h2>
+    <p>Для проведения сессии подписания расширение передаёт через защищённый канал на сервер-ретранслятор (Cloud Relay, <code>sign.aitu.uz</code>) только:</p>
+    <ul>
+      <li>домен сайта-инициатора подписания;</li>
+      <li>данные, которые сайт запросил подписать (документ/строку), и готовую электронную подпись;</li>
+      <li>служебный идентификатор сессии.</li>
+    </ul>
+    <p>Эти данные хранятся в оперативной памяти ретранслятора временно (до 2 минут на активную сессию) и не записываются в постоянную базу данных.</p>
+
+    <h2>4. Локальное хранение</h2>
+    <p>Расширение использует <code>chrome.storage.local</code> только для одного флага — включения режима отладочного трейсинга (<code>kazeds_trace</code>), который по умолчанию выключен. Ключи и персональные данные локально не хранятся.</p>
+
+    <h2>5. Разрешения и зачем они</h2>
+    <ul>
+      <li><b>host_permissions &lt;all_urls&gt; + content scripts</b> — подпись через NCALayer используется на множестве государственных и коммерческих сайтов (eGov, kazpatent, банки и др.). Расширение должно уметь перехватить локальный WebSocket NCALayer на любом таком сайте.</li>
+      <li><b>scripting</b> — для отображения оверлея с QR-кодом на странице, инициировавшей подпись.</li>
+      <li><b>storage</b> — для флага режима отладки (см. п.4).</li>
+    </ul>
+
+    <h2>6. Третьи стороны</h2>
+    <p>При выборе подписания через <b>eGov Mobile</b> документ передаётся в официальное приложение eGov Mobile Республики Казахстан; его обработка регулируется политикой eGov. KazEDS лишь формирует запрос и передаёт документ.</p>
+
+    <h2>7. Передача и продажа данных</h2>
+    <p>Мы не продаём и не передаём данные третьим лицам для рекламы или иных не связанных с подписанием целей.</p>
+
+    <h2>8. Контакты</h2>
+    <p>Вопросы по конфиденциальности: <a href="https://github.com/bagdatmussinkz/kazeds">github.com/bagdatmussinkz/kazeds</a></p>
+
+    <p class="muted" style="margin-top:3rem"><a href="/">← На главную</a></p>
+  </div>
+</body>
+</html>

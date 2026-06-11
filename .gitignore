@@ -11,3 +11,5 @@ dist/
 docs/bm_doo/
 docs/ncalayer_sdk/
 .next-build/
+*.crx
+*.pem

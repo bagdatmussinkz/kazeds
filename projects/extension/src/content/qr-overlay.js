@@ -88,7 +88,7 @@
             <span>Ожидание сканирования...</span>
           </div>
           <div class="qr-branding" style="display:flex;align-items:center;justify-content:center;gap:10px">
-            <span>KazEDS v2.0.21</span>
+            <span>KazEDS v2.0.22</span>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#94a3b8">
               <input type="checkbox" id="kazeds-trace-toggle" ${data.traceEnabled ? "checked" : ""} style="margin:0" />
               trace

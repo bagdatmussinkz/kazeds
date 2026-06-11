@@ -419,7 +419,13 @@ const knpCommands = {
           notAfter: farFuture,
           certNotBefore: new Date().toISOString(),
           certNotAfter: farFuture,
+          // key meta (superset of fields the Kalkan WASM emits)
+          keyType: "ECGOST3410-2015-512",
+          keyId: "kazeds-remote",
           keyUsage: "sign",
+          authorityKeyId: "kazeds-cloud",
+          authorityKeyIdentifier: "kazeds-cloud",
+          signatureAlgorithm: "ECGOST3410-2015-512",
           storageName: "PKCS12",
           remote: true,
         },

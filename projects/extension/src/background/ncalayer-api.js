@@ -453,6 +453,54 @@ const knpCommands = {
 };
 
 // ============================================================
+// Module: kz.ncalayer.web.verify — server-side CMS verification
+// Some sites verify the produced signature via this module.
+// ============================================================
+
+registerModule("kz.ncalayer.web.verify", {
+  async handle(request) {
+    if (request.method === "checkSign") return verifyCMS(request.args || {});
+    return { status: false, code: "UNKNOWN_METHOD", message: `Unknown method: ${request.method}` };
+  },
+  formatError: (_p, msg) => ({ status: false, code: "INTERNAL_ERROR", message: msg }),
+});
+
+// Verify a CMS — KazEDS Java verifier (GOST + chain) first, ezsigner fallback.
+async function verifyCMS(args) {
+  const cmsBase64 = args?.cmsBase64 || args?.cms || args?.signature;
+  if (!cmsBase64) {
+    return { status: false, code: "NO_DATA", message: "cmsBase64 is required" };
+  }
+  // 1) KazEDS verifier (nginx → Java BouncyCastle + Kalkan)
+  try {
+    const resp = await fetch("https://sign.aitu.uz/relay/verify/checkSign", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: cmsBase64,
+    });
+    if (resp.ok) {
+      const body = await resp.json();
+      return { status: true, body };
+    }
+  } catch {
+    // fall through to ezsigner
+  }
+  // 2) Fallback: ezsigner.kz (multipart, like reference NCALayer web verify)
+  try {
+    const binary = atob(cmsBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const form = new FormData();
+    form.append("signData", new Blob([bytes], { type: "application/octet-stream" }), args?.filename || "signature.cms");
+    const resp = await fetch("https://ezsigner.kz/checkSign", { method: "POST", body: form });
+    if (!resp.ok) return { status: false, code: "HTTP_ERROR", message: `verify returned ${resp.status}` };
+    return { status: true, body: await resp.json() };
+  } catch (e) {
+    return { status: false, code: "VERIFY_ERROR", message: e.message };
+  }
+}
+
+// ============================================================
 // Module: kz.digiflow.mobile.extensions
 // ============================================================
 

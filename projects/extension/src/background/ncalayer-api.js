@@ -390,17 +390,35 @@ const knpCommands = {
   getCertificates(request) {
     const requestId = request?.requestId ?? null;
     const farFuture = new Date(Date.now() + 5 * 365 * 24 * 3600 * 1000).toISOString();
+    // The KNP site parses the DN itself (certificateService.getCN does
+    // `dn.split(...)`), so every DN-ish field it might read must be a string,
+    // never undefined. Provide all common aliases.
+    const subjectDn = "CN=KazEDS — подпись на телефоне,O=KazEDS,SERIALNUMBER=kazeds-remote,C=KZ";
+    const issuerDn = "CN=KazEDS Cloud,O=KazEDS,C=KZ";
     return knpResult(requestId, "OK", {
       certificates: [
         {
           alias: "kazeds-remote",
           serialNumber: "kazeds-remote",
+          // CN
           subjectCn: "KazEDS — подпись на телефоне",
-          subjectDn: "CN=KazEDS — подпись на телефоне,O=KazEDS",
           issuerCn: "KazEDS Cloud",
-          issuerDn: "CN=KazEDS Cloud",
+          // DN aliases (subject)
+          subject: subjectDn,
+          subjectDn: subjectDn,
+          subjectDN: subjectDn,
+          subjectName: subjectDn,
+          dn: subjectDn,
+          // DN aliases (issuer)
+          issuer: issuerDn,
+          issuerDn: issuerDn,
+          issuerDN: issuerDn,
+          issuerName: issuerDn,
+          // validity
           notBefore: new Date().toISOString(),
           notAfter: farFuture,
+          certNotBefore: new Date().toISOString(),
+          certNotAfter: farFuture,
           keyUsage: "sign",
           storageName: "PKCS12",
           remote: true,
